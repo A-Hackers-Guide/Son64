@@ -60,7 +60,9 @@ body{background:#000}
 
 <script type="module">
 import { audio, clock, toast, pickFile } from '../../js/shared.js';
+import { playIfFresh, styles } from '../../js/bootseq.js';
 clock(document.getElementById('clock'));
+playIfFresh('son3', styles.son3);
 
 const cats = [
   {k:'users',    ic:'👥', nm:'Users',    items:[
@@ -178,8 +180,7 @@ function loop(){
 }
 loop();
 
-// Startup chime
-setTimeout(()=>audio.startup(), 150);
+// Boot sequence handles the chime via its own audio.startup call.
 </script>
 </body>
 </html>

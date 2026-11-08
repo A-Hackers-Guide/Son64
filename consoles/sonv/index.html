@@ -55,7 +55,9 @@ body{background:#000}
 
 <script type="module">
 import { audio, clock, toast, pickFile } from '../../js/shared.js';
+import { playIfFresh, styles } from '../../js/bootseq.js';
 clock(document.getElementById('clock'));
+playIfFresh('sonv', styles.sonv);
 
 const PAGES = [
   [

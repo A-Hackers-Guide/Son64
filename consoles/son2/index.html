@@ -42,7 +42,9 @@ body{background:#000}
 
 <script type="module">
 import { audio, clock, toast, pickFile } from '../../js/shared.js';
+import { playIfFresh, styles } from '../../js/bootseq.js';
 clock(document.getElementById('clock'));
+playIfFresh('son2', styles.son2);
 
 const tiles = [
   {k:'disc',    ic:'◉', nm:'Browser',     sz:'Disc'},

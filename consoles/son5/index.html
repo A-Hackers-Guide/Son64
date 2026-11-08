@@ -32,6 +32,40 @@ body{background:#000}
 .s5-cc .i{font-size:22px}
 .s5-cc .l{font-size:11px;letter-spacing:1px;color:#9ab6d9}
 .s5-footer{padding:12px 6vw;color:#89a7cc;font-size:11px;letter-spacing:3px;text-transform:uppercase;display:flex;justify-content:space-between}
+
+/* Sub-screens (profile, trophies, game) */
+.subscreen{position:fixed;inset:0;z-index:50;background:linear-gradient(180deg,#02060f 0%, #050a1e 100%);display:none;flex-direction:column;color:#e8f2ff}
+.subscreen.on{display:flex}
+.sub-header{padding:28px 6vw 0;display:flex;justify-content:space-between;align-items:center}
+.sub-header h2{margin:0;font-size:22px;letter-spacing:2px;font-weight:700}
+.sub-close{color:#9ab6d9;cursor:pointer;padding:6px 14px;border:1px solid var(--line);border-radius:999px;font-size:12px;letter-spacing:2px;text-transform:uppercase;background:rgba(255,255,255,.04)}
+.sub-close:hover{color:#fff;background:rgba(255,255,255,.08)}
+.sub-body{padding:20px 6vw;overflow:auto;flex:1}
+.profile-grid{display:grid;grid-template-columns:120px 1fr;gap:28px;align-items:start}
+.avatar{width:120px;height:120px;border-radius:50%;background:radial-gradient(circle at 30% 20%,#9bd3ff,#2a5eb5);display:grid;place-items:center;color:#fff;font-size:48px;font-weight:800;box-shadow:0 10px 40px rgba(60,120,240,.35)}
+.profile-field{margin:10px 0}
+.profile-field label{display:block;color:#9ab6d9;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-bottom:6px}
+.profile-field input{padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid var(--line);color:#fff;border-radius:10px;font:inherit;min-width:260px;outline:none}
+.profile-field input:focus{border-color:var(--accent)}
+.trophy-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.trophy-card{padding:14px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--line);display:grid;grid-template-columns:48px 1fr;gap:12px;align-items:start}
+.trophy-card.locked{opacity:.35}
+.trophy-ic{width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 30% 20%,#fff5c8,#f0a830);display:grid;place-items:center;color:#5c3800;font-size:22px;font-weight:800}
+.trophy-card.locked .trophy-ic{background:#1a2238;color:#4b5a7a}
+.trophy-nm{font-weight:600;margin-bottom:2px}
+.trophy-dm{color:#9ab6d9;font-size:12px}
+
+/* Space Drift game */
+.game{position:fixed;inset:0;z-index:60;background:#000;display:none;flex-direction:column}
+.game.on{display:flex}
+.game-hud{padding:14px 20px;display:flex;justify-content:space-between;align-items:center;color:#cfe3ff;font-family:ui-monospace,"SF Mono",monospace;font-size:13px;letter-spacing:2px;border-bottom:1px solid var(--line)}
+.game-hud span b{color:#fff}
+.game-stage{flex:1;position:relative;background:#000}
+.game-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.game-help{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;color:#cfe3ff;background:rgba(0,0,0,.6);padding:24px 36px;border-radius:14px;backdrop-filter:blur(8px);border:1px solid var(--line)}
+.game-help h3{margin:0 0 6px;letter-spacing:2px}
+.game-help p{margin:6px 0;color:#9ab6d9;font-size:13px}
+.game-help .k{display:inline-block;min-width:22px;padding:2px 8px;border:1px solid var(--line);border-radius:6px;font-family:ui-monospace,monospace;font-size:11px;margin:0 2px}
 </style>
 </head>
 <body>
@@ -52,7 +86,7 @@ body{background:#000}
   <section class="s5-feature">
     <div>
       <h1 id="ftTitle">Space Drift</h1>
-      <p id="ftDesc">An original demo scene. Thrusters, nebulae, no copyrighted content.</p>
+      <p id="ftDesc">An original demo. Thrust between asteroids, don't crash.</p>
     </div>
     <div class="btns">
       <button class="btn primary" id="playBtn">▶ Play</button>
@@ -70,15 +104,64 @@ body{background:#000}
 
 <aside class="s5-ctrl" id="cc">
   <div class="s5-ctrl-row">
-    <div class="s5-cc"><div class="i">⏻</div><div class="l">Power</div></div>
-    <div class="s5-cc"><div class="i">🎙</div><div class="l">Mic</div></div>
-    <div class="s5-cc"><div class="i">📶</div><div class="l">Network</div></div>
-    <div class="s5-cc"><div class="i">♪</div><div class="l">Sound</div></div>
-    <div class="s5-cc"><div class="i">◉</div><div class="l">Controllers</div></div>
-    <div class="s5-cc"><div class="i">✿</div><div class="l">Accessibility</div></div>
-    <div class="s5-cc"><div class="i">👥</div><div class="l">Profile</div></div>
+    <div class="s5-cc" data-cc="power"><div class="i">⏻</div><div class="l">Power</div></div>
+    <div class="s5-cc" data-cc="mic"><div class="i">🎙</div><div class="l">Mic</div></div>
+    <div class="s5-cc" data-cc="net"><div class="i">📶</div><div class="l">Network</div></div>
+    <div class="s5-cc" data-cc="sound"><div class="i">♪</div><div class="l">Sound</div></div>
+    <div class="s5-cc" data-cc="ctl"><div class="i">◉</div><div class="l">Controllers</div></div>
+    <div class="s5-cc" data-cc="a11y"><div class="i">✿</div><div class="l">Accessibility</div></div>
+    <div class="s5-cc" data-cc="profile"><div class="i">👥</div><div class="l">Profile</div></div>
+    <div class="s5-cc" data-cc="trophies"><div class="i">★</div><div class="l">Trophies</div></div>
   </div>
 </aside>
+
+<!-- Profile sub-screen -->
+<section class="subscreen" id="profileScreen">
+  <div class="sub-header"><h2>Profile</h2><button class="sub-close" data-close>Close</button></div>
+  <div class="sub-body">
+    <div class="profile-grid">
+      <div class="avatar" id="avatar">S</div>
+      <div>
+        <div class="profile-field">
+          <label>Display name</label>
+          <input id="profileName" placeholder="Guest" />
+        </div>
+        <div class="profile-field">
+          <label>Member since</label>
+          <div style="color:#9ab6d9" id="profileSince">—</div>
+        </div>
+        <div class="profile-field">
+          <label>Trophies unlocked</label>
+          <div style="color:#9ab6d9" id="profileTrophies">0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Trophies sub-screen -->
+<section class="subscreen" id="trophyScreen">
+  <div class="sub-header"><h2>Trophies</h2><button class="sub-close" data-close>Close</button></div>
+  <div class="sub-body"><div class="trophy-grid" id="trophyGrid"></div></div>
+</section>
+
+<!-- Space Drift mini-game -->
+<section class="game" id="game">
+  <div class="game-hud">
+    <span>DRIFT · <b id="gScore">0000</b></span>
+    <span>LIVES · <b id="gLives">★★★</b></span>
+    <span>WAVE · <b id="gWave">1</b></span>
+    <span><button class="sub-close" data-close>Exit · Esc</button></span>
+  </div>
+  <div class="game-stage">
+    <canvas id="gCanvas"></canvas>
+    <div class="game-help" id="gHelp">
+      <h3>SPACE DRIFT</h3>
+      <p><span class="k">←</span> <span class="k">→</span> rotate · <span class="k">↑</span> thrust · <span class="k">Space</span> shoot · <span class="k">Esc</span> exit</p>
+      <p>Press <span class="k">Enter</span> to launch</p>
+    </div>
+  </div>
+</section>
 
 <div class="modal" id="rom"><div class="box">
   <h3>Add a title</h3>
@@ -89,13 +172,25 @@ body{background:#000}
 
 <script type="module">
 import { audio, clock, toast, pickFile } from '../../js/shared.js';
+import { playIfFresh, styles } from '../../js/bootseq.js';
+import { unlock, list as trophyList, has } from '../../js/trophies.js';
+
 clock(document.getElementById('clock'));
 
+// Profile: persisted name
+const PROFILE_KEY = 'son64:profile';
+function loadProfile(){ try{ return JSON.parse(localStorage.getItem(PROFILE_KEY)||'{}'); }catch{ return {}; } }
+function saveProfile(p){ localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }
+const profile = loadProfile();
+if(!profile.name) profile.name = 'Guest';
+if(!profile.since) profile.since = Date.now();
+saveProfile(profile);
+
 const games = [
-  {ic:'◉', nm:'Space Drift',  dm:'Demo · Original'},
-  {ic:'◉', nm:'Neon Rally',   dm:'Demo · Original'},
-  {ic:'◉', nm:'Gloss',        dm:'Demo · Original'},
-  {ic:'◉', nm:'Tideglass',    dm:'Demo · Original'},
+  {ic:'◉', nm:'Space Drift',  dm:'Original · in-console demo', action:'game'},
+  {ic:'◉', nm:'Neon Rally',   dm:'Soon · placeholder'},
+  {ic:'◉', nm:'Gloss',        dm:'Soon · placeholder'},
+  {ic:'◉', nm:'Tideglass',    dm:'Soon · placeholder'},
   {ic:'⤓', nm:'Add title',    dm:'From a file', action:'rom'},
 ];
 const media = [
@@ -111,10 +206,11 @@ const store = [
 ];
 const settings = [
   {ic:'⎙',nm:'System',     dm:'About Son 5'},
+  {ic:'👥',nm:'Profile',    dm:'Display name', action:'profile'},
+  {ic:'★', nm:'Trophies',  dm:'Achievements',  action:'trophies'},
   {ic:'🕑',nm:'Time',       dm:'Clock'},
   {ic:'♪', nm:'Sound',      dm:'Output'},
   {ic:'⇆', nm:'Network',    dm:'Wi-Fi'},
-  {ic:'👥',nm:'Users',      dm:'Switch'},
 ];
 const maps = { games, media, store, settings };
 let tab='games', ri=0;
@@ -147,6 +243,8 @@ function render(){
 }
 tabs.forEach(t=>t.addEventListener('click',()=>{ tab=t.dataset.k; ri=0; audio.tick(); render(); }));
 addEventListener('keydown', e=>{
+  if(game.classList.contains('on')) return; // let the game handle keys
+  if(anySubOpen()) return;
   const keys = ['games','media','store','settings'];
   if(e.key==='ArrowUp'){ const i=keys.indexOf(tab); tab=keys[(i-1+keys.length)%keys.length]; ri=0; audio.tick(); render(); }
   if(e.key==='ArrowDown'){ const i=keys.indexOf(tab); tab=keys[(i+1)%keys.length]; ri=0; audio.tick(); render(); }
@@ -161,51 +259,293 @@ function act(){
   audio.confirm();
   const it = maps[tab][ri];
   if(it.action==='rom'){ document.getElementById('rom').classList.add('on'); return; }
+  if(it.action==='game'){ launchGame(); return; }
+  if(it.action==='profile'){ openProfile(); return; }
+  if(it.action==='trophies'){ openTrophies(); return; }
   toast(`Launching ${it.nm} (demo shell)`);
 }
-document.getElementById('playBtn').addEventListener('click', act);
+document.getElementById('playBtn').addEventListener('click', ()=>{
+  const it = maps[tab][ri];
+  if(tab==='games' && it && it.action==='game') launchGame();
+  else act();
+});
 document.getElementById('addBtn').addEventListener('click', ()=>{ audio.tick(); document.getElementById('rom').classList.add('on'); });
 const cc = document.getElementById('cc');
 document.getElementById('ccToggle').addEventListener('click', ()=>{ cc.classList.toggle('on'); audio.tick(); });
+// Control Center shortcuts
+document.querySelectorAll('.s5-cc').forEach(el=>el.addEventListener('click', ()=>{
+  audio.tick();
+  const k = el.dataset.cc;
+  if(k==='profile'){ cc.classList.remove('on'); openProfile(); }
+  else if(k==='trophies'){ cc.classList.remove('on'); openTrophies(); }
+  else if(k==='sound'){ audio.toggle(); toast(audio.muted?'Muted':'Unmuted'); }
+  else toast(el.querySelector('.l').textContent);
+}));
 render();
+
+// Sub-screens
+const profileScreen = document.getElementById('profileScreen');
+const trophyScreen  = document.getElementById('trophyScreen');
+function anySubOpen(){ return profileScreen.classList.contains('on') || trophyScreen.classList.contains('on'); }
+document.querySelectorAll('[data-close]').forEach(el=>el.addEventListener('click', ()=>{
+  profileScreen.classList.remove('on'); trophyScreen.classList.remove('on');
+  if(game.classList.contains('on')){ endGame(); }
+  audio.back();
+}));
+function openProfile(){
+  profileScreen.classList.add('on');
+  document.getElementById('profileName').value = profile.name;
+  document.getElementById('profileSince').textContent = new Date(profile.since).toLocaleDateString();
+  document.getElementById('profileTrophies').textContent = trophyList().length;
+  document.getElementById('avatar').textContent = (profile.name||'G').trim().charAt(0).toUpperCase();
+}
+document.getElementById('profileName').addEventListener('input', e=>{
+  profile.name = e.target.value.slice(0,20);
+  saveProfile(profile);
+  document.getElementById('avatar').textContent = (profile.name||'G').trim().charAt(0).toUpperCase();
+});
+const ALL_TROPHIES = [
+  {id:'first-boot',  nm:'Pilot Light',     dm:'Boot Son 5 for the first time'},
+  {id:'drift-start', nm:'Clearance Given', dm:'Launch Space Drift'},
+  {id:'drift-100',   nm:'A Steady Hand',   dm:'Score 100 in Space Drift'},
+  {id:'drift-500',   nm:'Ace Reflexes',    dm:'Score 500 in Space Drift'},
+  {id:'drift-wave3', nm:'Deep Field',      dm:'Reach wave 3'},
+  {id:'first-rom',   nm:'The Librarian',   dm:'Register your first title'},
+];
+function openTrophies(){
+  trophyScreen.classList.add('on');
+  const g = document.getElementById('trophyGrid');
+  g.innerHTML = ALL_TROPHIES.map(t=>{
+    const got = has(t.id);
+    return `<div class="trophy-card ${got?'':'locked'}">
+      <div class="trophy-ic">${got?'★':'?'}</div>
+      <div><div class="trophy-nm">${got?t.nm:'Hidden'}</div><div class="trophy-dm">${got?t.dm:'Keep playing to unlock'}</div></div>
+    </div>`;
+  }).join('');
+}
 
 // ROM modal
 const modal = document.getElementById('rom');
 const drop  = document.getElementById('drop');
-const boot  = document.getElementById('boot');
+const bt    = document.getElementById('boot');
 let picked=null;
-modal.querySelector('[data-x]').addEventListener('click', ()=>{ modal.classList.remove('on'); picked=null; boot.disabled=true; drop.textContent='Drag a file here or click to choose'; });
+modal.querySelector('[data-x]').addEventListener('click', ()=>{ modal.classList.remove('on'); picked=null; bt.disabled=true; drop.textContent='Drag a file here or click to choose'; });
 drop.addEventListener('click', async ()=>{ const f = await pickFile('.pkg,.iso,.zip,.bin'); if(f) use(f); });
 drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('hot'); });
 drop.addEventListener('dragleave', ()=>drop.classList.remove('hot'));
 drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('hot'); if(e.dataTransfer.files[0]) use(e.dataTransfer.files[0]); });
-function use(f){ picked=f; drop.textContent=`${f.name} · ${(f.size/1024/1024).toFixed(1)} MB`; boot.disabled=false; }
-boot.addEventListener('click', ()=>{ audio.confirm(); modal.classList.remove('on'); toast(`Added ${picked.name} · UI shell only`); });
+function use(f){ picked=f; drop.textContent=`${f.name} · ${(f.size/1024/1024).toFixed(1)} MB`; bt.disabled=false; }
+bt.addEventListener('click', ()=>{ audio.confirm(); modal.classList.remove('on'); toast(`Added ${picked.name} · UI shell only`); unlock('first-rom', ALL_TROPHIES.find(t=>t.id==='first-rom').nm, ALL_TROPHIES.find(t=>t.id==='first-rom').dm); });
 
 // Particle sheen background
 const bg = document.getElementById('bg'), c = bg.getContext('2d');
 function resize(){ bg.width=innerWidth; bg.height=innerHeight; } addEventListener('resize',resize); resize();
 const parts = Array.from({length:120}, () => ({x:Math.random(), y:Math.random(), vx:(Math.random()-.5)*.0003, vy:(Math.random()-.5)*.0003, r:.3 + Math.random()*1.4}));
-let t=0;
-function loop(){
-  t+=.01;
+let bgt=0;
+function bgloop(){
+  bgt+=.01;
   const g = c.createRadialGradient(bg.width*.5,bg.height*.5,60,bg.width*.5,bg.height*.5,Math.max(bg.width,bg.height));
   g.addColorStop(0,'#0a1230'); g.addColorStop(1,'#000106'); c.fillStyle=g; c.fillRect(0,0,bg.width,bg.height);
-  // deep background particles
   for(const p of parts){
     p.x += p.vx; p.y += p.vy; if(p.x<0||p.x>1) p.vx*=-1; if(p.y<0||p.y>1) p.vy*=-1;
-    const a = .3 + .6*Math.abs(Math.sin(t + (p.x+p.y)*10));
+    const a = .3 + .6*Math.abs(Math.sin(bgt + (p.x+p.y)*10));
     c.fillStyle=`rgba(180,220,255,${a})`;
     c.beginPath(); c.arc(p.x*bg.width, p.y*bg.height, p.r, 0, Math.PI*2); c.fill();
   }
-  // slow sheen band
-  const sw = bg.width*.3, sx = ((t*40)%(bg.width+sw*2)) - sw;
+  const sw = bg.width*.3, sx = ((bgt*40)%(bg.width+sw*2)) - sw;
   const sg = c.createLinearGradient(sx,0,sx+sw,0);
   sg.addColorStop(0,'transparent'); sg.addColorStop(.5,'rgba(255,255,255,.03)'); sg.addColorStop(1,'transparent');
   c.fillStyle=sg; c.fillRect(sx,0,sw,bg.height);
-  requestAnimationFrame(loop);
+  requestAnimationFrame(bgloop);
 }
-loop();
+bgloop();
+
+// ---- SPACE DRIFT ----
+const game = document.getElementById('game');
+const gCanvas = document.getElementById('gCanvas');
+const gCtx = gCanvas.getContext('2d');
+const gScore = document.getElementById('gScore');
+const gLives = document.getElementById('gLives');
+const gWave  = document.getElementById('gWave');
+const gHelp  = document.getElementById('gHelp');
+let gState = null;
+
+function launchGame(){
+  unlock('drift-start', ALL_TROPHIES.find(t=>t.id==='drift-start').nm, ALL_TROPHIES.find(t=>t.id==='drift-start').dm);
+  game.classList.add('on');
+  resizeGame();
+  gHelp.style.display = 'block';
+  gState = newState();
+  paintGame();
+  cc.classList.remove('on');
+}
+function endGame(){ game.classList.remove('on'); cancelAnimationFrame(gState?.raf||0); gState=null; }
+addEventListener('resize', resizeGame);
+function resizeGame(){
+  const r = gCanvas.parentElement.getBoundingClientRect();
+  gCanvas.width = r.width; gCanvas.height = r.height;
+}
+function newState(){
+  return { ship:{x:gCanvas.width/2,y:gCanvas.height/2,vx:0,vy:0,ang:-Math.PI/2}, keys:{}, bullets:[], asts:spawnAsts(1), score:0, lives:3, wave:1, running:false, destroyed:0 };
+}
+function spawnAsts(wave){
+  const n = 4 + wave;
+  const arr = [];
+  for(let i=0;i<n;i++){
+    const side = Math.floor(Math.random()*4);
+    let x,y;
+    if(side===0){ x=Math.random()*gCanvas.width; y=-30; }
+    else if(side===1){ x=gCanvas.width+30; y=Math.random()*gCanvas.height; }
+    else if(side===2){ x=Math.random()*gCanvas.width; y=gCanvas.height+30; }
+    else { x=-30; y=Math.random()*gCanvas.height; }
+    const ang = Math.random()*Math.PI*2;
+    const sp = .6 + Math.random()*1.4 + wave*.1;
+    arr.push({x,y,vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp, r: 24 + Math.random()*22, ang, rs:(Math.random()-.5)*.03});
+  }
+  return arr;
+}
+
+addEventListener('keydown', e=>{
+  if(!game.classList.contains('on')) return;
+  if(e.key==='Escape'){ endGame(); return; }
+  if(e.key==='Enter' && !gState.running){ gState.running=true; gHelp.style.display='none'; loopGame(); return; }
+  gState.keys[e.key]=true;
+  if(e.key===' ' && gState.running){ shoot(); e.preventDefault(); }
+});
+addEventListener('keyup', e=>{ if(!game.classList.contains('on')||!gState) return; gState.keys[e.key]=false; });
+
+function shoot(){
+  const s = gState.ship;
+  gState.bullets.push({x:s.x+Math.cos(s.ang)*18, y:s.y+Math.sin(s.ang)*18, vx:Math.cos(s.ang)*6+s.vx*.3, vy:Math.sin(s.ang)*6+s.vy*.3, life:70});
+  audio.toneAt({f:1400,type:'triangle',dur:.06,peak:.06});
+}
+
+function loopGame(){
+  if(!gState || !game.classList.contains('on')) return;
+  const s = gState.ship, w = gCanvas.width, h = gCanvas.height;
+  // input
+  if(gState.keys['ArrowLeft'])  s.ang -= .08;
+  if(gState.keys['ArrowRight']) s.ang += .08;
+  if(gState.keys['ArrowUp']){
+    s.vx += Math.cos(s.ang)*.12; s.vy += Math.sin(s.ang)*.12;
+    if(Math.random()<.5) audio.toneAt({f:120+Math.random()*80,type:'sawtooth',dur:.03,peak:.03});
+  }
+  s.vx *= .992; s.vy *= .992;
+  s.x = (s.x + s.vx + w)%w; s.y = (s.y + s.vy + h)%h;
+  // bullets
+  for(const b of gState.bullets){ b.x+=b.vx; b.y+=b.vy; b.life--; }
+  gState.bullets = gState.bullets.filter(b => b.life>0 && b.x>=0 && b.x<=w && b.y>=0 && b.y<=h);
+  // asteroids
+  for(const a of gState.asts){
+    a.x = (a.x + a.vx + w)%w; a.y = (a.y + a.vy + h)%h; a.ang += a.rs;
+    // bullet hits
+    for(const b of gState.bullets){
+      const dx=b.x-a.x, dy=b.y-a.y;
+      if(dx*dx+dy*dy < a.r*a.r){ a._hit=true; b.life=0; }
+    }
+    // ship hit
+    const dx = s.x-a.x, dy = s.y-a.y;
+    if(dx*dx+dy*dy < (a.r+8)*(a.r+8)){ hit(); }
+  }
+  // split hit asteroids
+  const next=[];
+  for(const a of gState.asts){
+    if(a._hit){
+      gState.score += 10 + Math.floor(a.r);
+      gState.destroyed++;
+      audio.toneAt({f:300,type:'square',dur:.08,peak:.08});
+      if(a.r > 24){
+        for(let i=0;i<2;i++){ const ang=Math.random()*Math.PI*2, sp=1+Math.random()*2;
+          next.push({x:a.x,y:a.y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,r:a.r*.55,ang:0,rs:(Math.random()-.5)*.04});
+        }
+      }
+    } else next.push(a);
+  }
+  gState.asts = next;
+  // next wave
+  if(gState.asts.length===0){
+    gState.wave++; gState.asts = spawnAsts(gState.wave);
+    audio.confirm();
+    if(gState.wave>=3) unlock('drift-wave3', ALL_TROPHIES.find(t=>t.id==='drift-wave3').nm, ALL_TROPHIES.find(t=>t.id==='drift-wave3').dm);
+  }
+  // trophies
+  if(gState.score>=100) unlock('drift-100', ALL_TROPHIES.find(t=>t.id==='drift-100').nm, ALL_TROPHIES.find(t=>t.id==='drift-100').dm);
+  if(gState.score>=500) unlock('drift-500', ALL_TROPHIES.find(t=>t.id==='drift-500').nm, ALL_TROPHIES.find(t=>t.id==='drift-500').dm);
+  paintGame();
+  gState.raf = requestAnimationFrame(loopGame);
+}
+function hit(){
+  gState.lives--;
+  audio.error();
+  gState.ship.x=gCanvas.width/2; gState.ship.y=gCanvas.height/2; gState.ship.vx=0; gState.ship.vy=0;
+  if(gState.lives<=0){
+    gState.running=false;
+    gHelp.style.display='block';
+    gHelp.innerHTML = `<h3>DRIFT ENDS</h3><p>Score · <b>${gState.score}</b> · Wave · <b>${gState.wave}</b></p><p>Press <span class="k">Enter</span> to retry · <span class="k">Esc</span> to exit</p>`;
+    // restart on next enter
+    const onKey = e=>{ if(e.key==='Enter'){ gState = newState(); gState.running=true; gHelp.style.display='none'; removeEventListener('keydown', onKey); loopGame(); } };
+    addEventListener('keydown', onKey);
+  }
+}
+function paintGame(){
+  const w = gCanvas.width, h = gCanvas.height;
+  // background — scrolling starfield
+  gCtx.fillStyle='#030613'; gCtx.fillRect(0,0,w,h);
+  const t = performance.now()*.001;
+  for(let i=0;i<100;i++){
+    const x = ((i*83 + t*20)%w + w)%w;
+    const y = ((i*47 + t*10)%h + h)%h;
+    const a = .2 + .6*Math.abs(Math.sin(i+t));
+    gCtx.fillStyle=`rgba(180,220,255,${a})`;
+    gCtx.fillRect(x,y,1.2,1.2);
+  }
+  // nebula
+  const g = gCtx.createRadialGradient(w*.5,h*.4,60,w*.5,h*.4,Math.max(w,h));
+  g.addColorStop(0,'rgba(80,110,200,.18)'); g.addColorStop(1,'transparent'); gCtx.fillStyle=g; gCtx.fillRect(0,0,w,h);
+  // asteroids — abstract hex polygons
+  for(const a of gState.asts){
+    gCtx.save(); gCtx.translate(a.x,a.y); gCtx.rotate(a.ang);
+    gCtx.beginPath();
+    for(let k=0;k<7;k++){
+      const ang = k/7*Math.PI*2;
+      const rr = a.r * (.85 + .3*Math.sin(k*3 + a.r));
+      if(k===0) gCtx.moveTo(Math.cos(ang)*rr, Math.sin(ang)*rr);
+      else gCtx.lineTo(Math.cos(ang)*rr, Math.sin(ang)*rr);
+    }
+    gCtx.closePath();
+    gCtx.fillStyle='rgba(50,70,120,.45)';
+    gCtx.strokeStyle='rgba(150,200,255,.8)'; gCtx.lineWidth=1.5;
+    gCtx.fill(); gCtx.stroke();
+    gCtx.restore();
+  }
+  // bullets
+  for(const b of gState.bullets){
+    gCtx.fillStyle='rgba(255,230,180,1)';
+    gCtx.beginPath(); gCtx.arc(b.x,b.y,2,0,Math.PI*2); gCtx.fill();
+  }
+  // ship — slim triangle
+  const s = gState.ship;
+  gCtx.save(); gCtx.translate(s.x, s.y); gCtx.rotate(s.ang);
+  gCtx.strokeStyle='rgba(160,220,255,1)'; gCtx.lineWidth=1.6;
+  gCtx.fillStyle='rgba(10,30,60,.8)';
+  gCtx.beginPath(); gCtx.moveTo(14,0); gCtx.lineTo(-10,8); gCtx.lineTo(-5,0); gCtx.lineTo(-10,-8); gCtx.closePath();
+  gCtx.fill(); gCtx.stroke();
+  // thrust flame
+  if(gState.keys && gState.keys['ArrowUp']){
+    gCtx.fillStyle='rgba(255,200,120,.7)';
+    gCtx.beginPath(); gCtx.moveTo(-7,0); gCtx.lineTo(-18+Math.random()*4,4); gCtx.lineTo(-18+Math.random()*4,-4); gCtx.closePath(); gCtx.fill();
+  }
+  gCtx.restore();
+  // HUD
+  gScore.textContent = String(gState.score).padStart(4,'0');
+  gLives.textContent = '★'.repeat(Math.max(0,gState.lives)) + '☆'.repeat(3-Math.max(0,gState.lives));
+  gWave.textContent = gState.wave;
+}
+
+// Boot sequence + first-boot trophy
+playIfFresh('son5', styles.son5).then(()=>{
+  unlock('first-boot', ALL_TROPHIES.find(t=>t.id==='first-boot').nm, ALL_TROPHIES.find(t=>t.id==='first-boot').dm);
+});
 </script>
 </body>
 </html>

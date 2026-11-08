@@ -65,7 +65,9 @@ body{background:#000}
 
 <script type="module">
 import { audio, clock, toast, pickFile } from '../../js/shared.js';
+import { playIfFresh, styles } from '../../js/bootseq.js';
 clock(document.getElementById('clock'));
+playIfFresh('son1', styles.son1);
 
 const items = {
   disc:    [{nm:'LOAD DISC',sz:'INSERT'},{nm:'DISC INFO',sz:'—'}],
