@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Son 4 — Home</title>
+<link rel="stylesheet" href="../../css/console.css">
+<style>
+body{background:#000}
+.s4-shell{position:fixed;inset:0;z-index:2;display:grid;grid-template-rows:auto 1fr auto}
+.s4-functions{display:flex;gap:28px;padding:88px 6vw 10px;color:#9ab6d9;font-size:12px;letter-spacing:3px;text-transform:uppercase}
+.s4-functions .f{opacity:.5;cursor:pointer;padding:6px 10px;border-radius:4px;transition:all .2s}
+.s4-functions .f:hover,.s4-functions .f.sel{opacity:1;background:rgba(255,255,255,.06);color:#fff}
+.s4-content{padding:10px 6vw 30px;overflow:hidden}
+.s4-header{color:#dfeeff;font-size:11px;letter-spacing:4px;text-transform:uppercase;margin:6px 0 14px;opacity:.75}
+.s4-row{display:flex;gap:16px;align-items:stretch;transition:transform .35s cubic-bezier(.22,1,.36,1)}
+.s4-tile{flex:0 0 clamp(180px,20vw,240px);height:clamp(140px,22vh,210px);border-radius:8px;background:linear-gradient(145deg,#152945,#071728);border:1px solid rgba(180,220,255,.15);padding:14px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;color:#cfe3ff;transition:all .25s;position:relative;overflow:hidden}
+.s4-tile:hover,.s4-tile.sel{transform:scale(1.04);box-shadow:0 20px 60px rgba(0,100,220,.35),0 0 0 1px rgba(140,200,255,.45);background:linear-gradient(145deg,#1b3a68,#0a1f40)}
+.s4-tile .ic{font-size:36px;color:#dceeff;text-shadow:0 0 20px rgba(140,200,255,.4)}
+.s4-tile .nm{font-size:14px;letter-spacing:1px}
+.s4-tile .dm{font-size:11px;color:#89a7cc;letter-spacing:1px}
+.s4-tile .cover{position:absolute;inset:0;background:linear-gradient(165deg,transparent 40%,rgba(255,255,255,.08) 55%,transparent 70%);transform:translateY(100%);transition:transform .6s}
+.s4-tile.sel .cover{transform:translateY(0)}
+.s4-footer{padding:16px 6vw 20px;color:#89a7cc;font-size:11px;letter-spacing:3px;text-transform:uppercase;display:flex;justify-content:space-between}
+.s4-user{position:absolute;top:60px;right:30px;color:#9bb6d4;font-size:11px;letter-spacing:3px;text-align:right;z-index:3}
+.s4-user b{display:block;color:#fff;letter-spacing:4px;font-size:14px;margin-bottom:2px}
+</style>
+</head>
+<body>
+<canvas class="console-bg" id="bg"></canvas>
+
+<div class="top-hud">
+  <div class="left"><a href="../../" class="back-link">◂ Boot picker</a><span class="pill">Son 4</span></div>
+  <div class="right"><span class="hud-time" id="clock">--:--</span><span class="pill">GUEST</span></div>
+</div>
+<div class="s4-user"><b>GUEST</b>Welcome</div>
+
+<main class="s4-shell">
+  <nav class="s4-functions" id="fns"></nav>
+  <section class="s4-content">
+    <div class="s4-header" id="hdr">Library</div>
+    <div class="s4-row" id="row"></div>
+  </section>
+  <footer class="s4-footer">
+    <span>↑ ↓ function · ← → tile · enter open · esc back</span>
+    <span>Son 4</span>
+  </footer>
+</main>
+
+<div class="modal" id="rom"><div class="box">
+  <h3>Add a title</h3>
+  <p>Son 4-era emulation is <b>not viable in a browser</b>. The shell catalogs a file so the UI can display it.</p>
+  <div class="rom-drop" id="drop">Drag a file here or click to choose</div>
+  <div class="row"><button class="btn" data-x>Cancel</button><button class="btn primary" id="boot" disabled>Add</button></div>
+</div></div>
+
+<script type="module">
+import { audio, clock, toast, pickFile } from '../../js/shared.js';
+clock(document.getElementById('clock'));
+
+const funcs = [
+  {k:'notify',  nm:'Notifications'},
+  {k:'friends', nm:'Friends'},
+  {k:'party',   nm:'Party'},
+  {k:'msgs',    nm:'Messages'},
+  {k:'profile', nm:'Profile'},
+  {k:'trophy',  nm:'Trophies'},
+  {k:'settings',nm:'Settings'},
+  {k:'power',   nm:'Power'},
+];
+const tiles = {
+  library:[
+    {ic:'⤓',nm:'Add title',dm:'From a file', action:'rom'},
+    {ic:'◉',nm:'Space Drift',dm:'Demo · Original'},
+    {ic:'◉',nm:'Neon Rally',dm:'Demo · Original'},
+    {ic:'◉',nm:'Gloss',dm:'Demo · Original'},
+    {ic:'📺',nm:'Media Player',dm:'App'},
+    {ic:'🌐',nm:'Browser',dm:'App'},
+    {ic:'♪', nm:'Music',dm:'App'},
+    {ic:'◇', nm:'Photos',dm:'App'},
+  ],
+  settings:[
+    {ic:'⎙',nm:'System',dm:'About'},{ic:'🕑',nm:'Date & Time',dm:'Clock'},
+    {ic:'♪',nm:'Sound',dm:'Output'},{ic:'⇆',nm:'Network',dm:'Wi-Fi'},
+    {ic:'⌨',nm:'Input',dm:'Gamepad'},{ic:'👥',nm:'Users',dm:'Switch'},
+  ],
+};
+let fi=0, ri=0;
+const fnsEl = document.getElementById('fns');
+const rowEl = document.getElementById('row');
+const hdr   = document.getElementById('hdr');
+function render(){
+  fnsEl.innerHTML = funcs.map((f,i)=>`<div class="f ${i===fi?'sel':''}" data-i="${i}">${f.nm}</div>`).join('');
+  const key = funcs[fi].k==='settings'?'settings':'library';
+  hdr.textContent = key[0].toUpperCase()+key.slice(1);
+  const data = tiles[key];
+  rowEl.innerHTML = data.map((t,i)=>`
+    <div class="s4-tile ${i===ri?'sel':''}" data-i="${i}">
+      <div class="ic">${t.ic}</div>
+      <div><div class="nm">${t.nm}</div><div class="dm">${t.dm}</div></div>
+      <div class="cover"></div>
+    </div>`).join('');
+  const sel = rowEl.children[ri]; if(sel){
+    const r = sel.getBoundingClientRect(); const target = innerWidth/2 - (r.left + r.width/2 - rowEl.getBoundingClientRect().left);
+    rowEl.style.transform = `translateX(${Math.min(0, target)}px)`;
+  }
+  fnsEl.querySelectorAll('.f').forEach(el=>el.addEventListener('click',()=>{ fi=+el.dataset.i; ri=0; audio.tick(); render(); }));
+  rowEl.querySelectorAll('.s4-tile').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{ ri=+el.dataset.i; audio.hover(); render(); });
+    el.addEventListener('click',()=>act());
+  });
+}
+addEventListener('keydown',e=>{
+  if(e.key==='ArrowUp'){ fi=(fi-1+funcs.length)%funcs.length; ri=0; audio.tick(); render(); }
+  if(e.key==='ArrowDown'){ fi=(fi+1)%funcs.length; ri=0; audio.tick(); render(); }
+  const data = tiles[funcs[fi].k==='settings'?'settings':'library'];
+  if(e.key==='ArrowRight'){ ri=(ri+1)%data.length; audio.tick(); render(); }
+  if(e.key==='ArrowLeft'){ ri=(ri-1+data.length)%data.length; audio.tick(); render(); }
+  if(e.key==='Enter'){ act(); }
+  if(e.key==='Escape'){ audio.back(); history.back(); }
+});
+function act(){
+  audio.confirm();
+  const data = tiles[funcs[fi].k==='settings'?'settings':'library'];
+  const it = data[ri];
+  if(it.action==='rom'){ document.getElementById('rom').classList.add('on'); return; }
+  toast(it.nm);
+}
+render(); addEventListener('resize', render);
+
+// ROM modal
+const modal = document.getElementById('rom');
+const drop  = document.getElementById('drop');
+const boot  = document.getElementById('boot');
+let picked=null;
+modal.querySelector('[data-x]').addEventListener('click', ()=>{ modal.classList.remove('on'); picked=null; boot.disabled=true; drop.textContent='Drag a file here or click to choose'; });
+drop.addEventListener('click', async ()=>{ const f = await pickFile('.pkg,.iso,.zip,.bin'); if(f) use(f); });
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('hot'); });
+drop.addEventListener('dragleave', ()=>drop.classList.remove('hot'));
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('hot'); if(e.dataTransfer.files[0]) use(e.dataTransfer.files[0]); });
+function use(f){ picked=f; drop.textContent=`${f.name} · ${(f.size/1024/1024).toFixed(1)} MB`; boot.disabled=false; }
+boot.addEventListener('click', ()=>{ audio.confirm(); modal.classList.remove('on'); toast(`Added ${picked.name} · UI shell only`); });
+
+// Cool blue sweep background
+const bg = document.getElementById('bg'), c = bg.getContext('2d');
+function resize(){ bg.width=innerWidth; bg.height=innerHeight; } addEventListener('resize',resize); resize();
+let t=0;
+function loop(){
+  t+=.004;
+  const k = (Math.sin(t)+1)/2;
+  const g = c.createLinearGradient(0,0,bg.width,bg.height);
+  g.addColorStop(0,'rgba(5,15,38,1)');
+  g.addColorStop(.5,`rgba(${20+k*20},${60+k*40},${170-k*30},1)`);
+  g.addColorStop(1,'rgba(2,6,16,1)');
+  c.fillStyle=g; c.fillRect(0,0,bg.width,bg.height);
+  c.strokeStyle='rgba(180,220,255,.06)'; c.lineWidth=1;
+  for(let i=0;i<24;i++){
+    const off = ((i/24)*bg.width + t*40)%(bg.width+200) - 100;
+    c.beginPath(); c.moveTo(off,0); c.lineTo(off-80,bg.height); c.stroke();
+  }
+  const g2 = c.createRadialGradient(bg.width/2,bg.height,80,bg.width/2,bg.height,bg.width);
+  g2.addColorStop(0,'rgba(120,180,255,.1)'); g2.addColorStop(1,'transparent'); c.fillStyle=g2; c.fillRect(0,0,bg.width,bg.height);
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

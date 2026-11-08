@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Son 2 — Browser</title>
+<link rel="stylesheet" href="../../css/console.css">
+<style>
+body{background:#000}
+.s2-wrap{position:fixed;inset:0;z-index:2;display:grid;grid-template-rows:auto 1fr auto;padding:70px 4vw 40px}
+.s2-title{text-align:center;letter-spacing:10px;font-weight:300;color:#cfe3ff;font-size:16px;margin-bottom:10px}
+.s2-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;place-content:center;align-content:center;max-width:860px;width:100%;margin:0 auto;padding:30px 0}
+.s2-tile{aspect-ratio:1;background:linear-gradient(145deg,rgba(40,80,160,.35),rgba(10,20,50,.6));border:1px solid rgba(180,220,255,.25);border-radius:4px;padding:16px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;color:#cfe3ff;transition:all .2s;position:relative;overflow:hidden}
+.s2-tile:hover,.s2-tile.sel{background:linear-gradient(145deg,rgba(80,140,220,.6),rgba(20,40,100,.7));box-shadow:0 0 40px rgba(130,180,255,.25),inset 0 0 20px rgba(180,220,255,.15);transform:translateY(-2px)}
+.s2-tile .ic{font-size:30px;letter-spacing:3px;color:#dceeff}
+.s2-tile .nm{font-size:12px;letter-spacing:3px;text-transform:uppercase}
+.s2-tile .sz{font-size:10px;color:#89a7cc;letter-spacing:1px}
+.s2-footer{color:#89a7cc;font-size:11px;letter-spacing:2px;text-align:center;text-transform:uppercase}
+.s2-footer .k{display:inline-block;padding:2px 6px;border:1px solid rgba(180,220,255,.25);border-radius:3px;margin:0 2px}
+</style>
+</head>
+<body>
+<canvas class="console-bg" id="bg"></canvas>
+
+<div class="top-hud">
+  <div class="left"><a href="../../" class="back-link">◂ Boot picker</a><span class="pill">Son 2</span></div>
+  <div class="right"><span class="hud-time" id="clock">--:--</span></div>
+</div>
+
+<main class="s2-wrap">
+  <div class="s2-title">S &nbsp; O &nbsp; N &nbsp; 2 &nbsp;·&nbsp; B R O W S E R</div>
+  <section class="s2-grid" id="grid"></section>
+  <footer class="s2-footer"><span class="k">←</span> <span class="k">→</span> <span class="k">↑</span> <span class="k">↓</span> move &nbsp;·&nbsp; <span class="k">Enter</span> open &nbsp;·&nbsp; <span class="k">Esc</span> back</footer>
+</main>
+
+<div class="modal" id="rom"><div class="box">
+  <h3>Load Disc</h3>
+  <p>Son 2-era emulation in the browser is <b>experimental</b>. The shell loads your file; a core that can actually run it may or may not be available on your device.</p>
+  <div class="rom-drop" id="drop">Drag a file here or click to choose</div>
+  <div class="row"><button class="btn" data-x>Cancel</button><button class="btn primary" id="boot" disabled>Try to boot</button></div>
+</div></div>
+
+<script type="module">
+import { audio, clock, toast, pickFile } from '../../js/shared.js';
+clock(document.getElementById('clock'));
+
+const tiles = [
+  {k:'disc',    ic:'◉', nm:'Browser',     sz:'Disc'},
+  {k:'memcard', ic:'▦', nm:'Memory',      sz:'Card'},
+  {k:'network', ic:'⟳', nm:'Network',     sz:'Online'},
+  {k:'config',  ic:'❖', nm:'System',      sz:'Config'},
+  {k:'video',   ic:'▶', nm:'Video',       sz:'Player'},
+  {k:'photo',   ic:'◇', nm:'Photo',       sz:'Album'},
+  {k:'music',   ic:'♪', nm:'Music',       sz:'Player'},
+  {k:'about',   ic:'ⓘ', nm:'About',       sz:'Son 2'},
+];
+let idx=0;
+const grid = document.getElementById('grid');
+function render(){
+  grid.innerHTML = tiles.map((t,i)=>`
+    <div class="s2-tile ${i===idx?'sel':''}" data-i="${i}">
+      <div class="ic">${t.ic}</div>
+      <div><div class="nm">${t.nm}</div><div class="sz">${t.sz}</div></div>
+    </div>`).join('');
+  grid.querySelectorAll('.s2-tile').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{ idx=+el.dataset.i; paint(); audio.hover(); });
+    el.addEventListener('click', ()=>act());
+  });
+}
+function paint(){ grid.querySelectorAll('.s2-tile').forEach((el,i)=>el.classList.toggle('sel', i===idx)); }
+addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight'){ idx=(idx+1)%tiles.length; audio.tick(); paint(); }
+  if(e.key==='ArrowLeft'){ idx=(idx-1+tiles.length)%tiles.length; audio.tick(); paint(); }
+  if(e.key==='ArrowDown'){ idx=Math.min(tiles.length-1,idx+4); audio.tick(); paint(); }
+  if(e.key==='ArrowUp'){ idx=Math.max(0,idx-4); audio.tick(); paint(); }
+  if(e.key==='Enter'){ act(); }
+  if(e.key==='Escape'){ history.back(); }
+});
+function act(){
+  audio.confirm();
+  const t = tiles[idx];
+  if(t.k==='disc'){ openRom(); return; }
+  if(t.k==='about'){ toast('Son 2 · Browser shell · 2026'); return; }
+  toast(t.nm + ' selected');
+}
+render();
+
+// ROM modal
+const modal = document.getElementById('rom');
+const drop  = document.getElementById('drop');
+const boot  = document.getElementById('boot');
+let picked=null;
+function openRom(){ modal.classList.add('on'); }
+modal.querySelector('[data-x]').addEventListener('click', ()=>{ modal.classList.remove('on'); picked=null; boot.disabled=true; drop.textContent='Drag a file here or click to choose'; });
+drop.addEventListener('click', async ()=>{ const f = await pickFile('.iso,.bin,.cue,.chd'); if(f) use(f); });
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('hot'); });
+drop.addEventListener('dragleave', ()=>drop.classList.remove('hot'));
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('hot'); if(e.dataTransfer.files[0]) use(e.dataTransfer.files[0]); });
+function use(f){ picked=f; drop.textContent=`${f.name} · ${(f.size/1024/1024).toFixed(1)} MB`; boot.disabled=false; }
+boot.addEventListener('click', ()=>{ audio.confirm(); modal.classList.remove('on'); toast(`Would run ${picked.name} in an experimental WASM core`); });
+
+// Floating cubes background
+const bg = document.getElementById('bg'), c = bg.getContext('2d');
+function resize(){ bg.width=innerWidth; bg.height=innerHeight; }
+addEventListener('resize', resize); resize();
+const N = 36;
+const cubes = Array.from({length:N}, () => ({
+  x: Math.random(), y: Math.random(), s: 8 + Math.random()*22,
+  vy: .1 + Math.random()*.3, rot: Math.random()*Math.PI*2, rs: (Math.random()-.5)*.01
+}));
+function loop(){
+  c.fillStyle='#030820'; c.fillRect(0,0,bg.width,bg.height);
+  const g = c.createRadialGradient(bg.width/2,bg.height*.55,40,bg.width/2,bg.height*.55,Math.max(bg.width,bg.height));
+  g.addColorStop(0,'rgba(60,110,200,.4)'); g.addColorStop(1,'rgba(0,0,0,0)'); c.fillStyle=g; c.fillRect(0,0,bg.width,bg.height);
+  for(const cu of cubes){
+    cu.y += cu.vy/bg.height; if(cu.y>1.1) cu.y=-.05; cu.rot += cu.rs;
+    const px = cu.x*bg.width, py = cu.y*bg.height;
+    c.save(); c.translate(px,py); c.rotate(cu.rot);
+    c.strokeStyle='rgba(170,210,255,.55)'; c.lineWidth=1.5;
+    c.strokeRect(-cu.s/2,-cu.s/2,cu.s,cu.s);
+    c.strokeRect(-cu.s/2+4,-cu.s/2+4,cu.s,cu.s);
+    c.beginPath();
+    c.moveTo(-cu.s/2,-cu.s/2); c.lineTo(-cu.s/2+4,-cu.s/2+4);
+    c.moveTo( cu.s/2,-cu.s/2); c.lineTo( cu.s/2+4,-cu.s/2+4);
+    c.moveTo( cu.s/2, cu.s/2); c.lineTo( cu.s/2+4, cu.s/2+4);
+    c.moveTo(-cu.s/2, cu.s/2); c.lineTo(-cu.s/2+4, cu.s/2+4);
+    c.stroke(); c.restore();
+  }
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

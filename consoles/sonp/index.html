@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Son Portable — Menu</title>
+<link rel="stylesheet" href="../../css/console.css">
+<style>
+body{background:#000}
+.sp-wrap{position:fixed;inset:0;z-index:2;display:grid;place-items:center}
+.sp-rows{display:flex;flex-direction:column;align-items:flex-start;gap:38px;padding:0 10vw;transition:transform .35s ease}
+.sp-cat{display:flex;align-items:center;gap:22px;opacity:.35;transition:opacity .25s,transform .25s}
+.sp-cat.sel{opacity:1}
+.sp-icon{width:66px;height:66px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.35);background:linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.02));color:#e8f2ff;font-size:28px;letter-spacing:1px;border-radius:4px;box-shadow:0 0 20px rgba(100,160,255,.15) inset;position:relative}
+.sp-cat.sel .sp-icon{box-shadow:0 0 40px rgba(130,190,255,.5)}
+.sp-cat .ci{display:flex;flex-direction:column}
+.sp-label{font-size:13px;letter-spacing:4px;color:#cfe3ff;text-transform:uppercase;opacity:0;transition:opacity .2s}
+.sp-cat.sel .sp-label{opacity:1}
+.sp-items{display:flex;gap:18px;margin-left:12px;opacity:0;transition:opacity .25s}
+.sp-cat.sel .sp-items{opacity:1}
+.sp-it{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:90px;cursor:pointer;color:#bcd7f2;transition:all .18s}
+.sp-it:hover,.sp-it.sel2{color:#fff;transform:translateY(-4px)}
+.sp-it .iic{width:54px;height:54px;border:1px solid rgba(255,255,255,.25);display:grid;place-items:center;font-size:22px;background:linear-gradient(145deg,rgba(255,255,255,.1),rgba(255,255,255,.02));border-radius:3px}
+.sp-it .inm{font-size:11px;letter-spacing:2px;text-transform:uppercase}
+.sp-ps{position:fixed;bottom:34px;left:50%;transform:translateX(-50%);color:#8aa0bd;letter-spacing:3px;font-size:11px;text-transform:uppercase;z-index:3}
+</style>
+</head>
+<body>
+<canvas class="console-bg" id="bg"></canvas>
+
+<div class="top-hud">
+  <div class="left"><a href="../../" class="back-link">◂ Boot picker</a><span class="pill">Son Portable</span></div>
+  <div class="right"><span class="hud-time" id="clock">--:--</span><span class="pill">BAT 92%</span></div>
+</div>
+
+<main class="sp-wrap">
+  <div class="sp-rows" id="rows"></div>
+</main>
+<div class="sp-ps">↑ ↓ category &nbsp; · &nbsp; ← → item &nbsp; · &nbsp; enter · open &nbsp; · &nbsp; esc · back</div>
+
+<div class="modal" id="rom"><div class="box">
+  <h3>Load Portable ISO</h3>
+  <p>Portable-era ISOs run via a WASM core when your device supports it. The file stays in memory.</p>
+  <div class="rom-drop" id="drop">Drag a file here or click to choose</div>
+  <div class="row"><button class="btn" data-x>Cancel</button><button class="btn primary" id="boot" disabled>Try to boot</button></div>
+</div></div>
+
+<script type="module">
+import { audio, clock, toast, pickFile } from '../../js/shared.js';
+clock(document.getElementById('clock'));
+
+const cats = [
+  {k:'settings', ic:'⚙', nm:'Settings', items:[{ic:'🕑',nm:'Time'},{ic:'⌨',nm:'Input'},{ic:'♪',nm:'Sound'},{ic:'⎙',nm:'System'}]},
+  {k:'photo',    ic:'◇', nm:'Photo',    items:[{ic:'▣',nm:'Memory'},{ic:'☁',nm:'Online'}]},
+  {k:'music',    ic:'♪', nm:'Music',    items:[{ic:'▦',nm:'Library'},{ic:'⏵',nm:'Now Playing'}]},
+  {k:'video',    ic:'▶', nm:'Video',    items:[{ic:'▦',nm:'Library'},{ic:'⇡',nm:'Stream'}]},
+  {k:'game',     ic:'◉', nm:'Game',     items:[{ic:'⤓',nm:'Load ISO',action:'rom'},{ic:'⌂',nm:'Saves'},{ic:'↺',nm:'Resume'}]},
+  {k:'network',  ic:'⟳', nm:'Network',  items:[{ic:'⇆',nm:'Wi-Fi'},{ic:'⇡',nm:'Share'}]},
+];
+let ci = 4, ii = 0; // start on Game
+const rows = document.getElementById('rows');
+function render(){
+  rows.innerHTML = cats.map((c,i)=>`
+    <div class="sp-cat ${i===ci?'sel':''}" data-i="${i}">
+      <div class="sp-icon">${c.ic}</div>
+      <div class="ci">
+        <div class="sp-label">${c.nm}</div>
+        <div class="sp-items">${c.items.map((it,j)=>`
+          <div class="sp-it ${i===ci && j===ii?'sel2':''}" data-j="${j}">
+            <div class="iic">${it.ic}</div><div class="inm">${it.nm}</div>
+          </div>`).join('')}</div>
+      </div>
+    </div>`).join('');
+  const sel = rows.children[ci];
+  if(sel){
+    const r = sel.getBoundingClientRect();
+    const vh = innerHeight;
+    rows.style.transform = `translateY(${vh/2 - r.top - r.height/2 + rows.getBoundingClientRect().top - rows.offsetTop}px)`;
+  }
+  // bind
+  rows.querySelectorAll('.sp-cat').forEach((el,i)=>el.addEventListener('mouseenter',()=>{ ci=i; ii=0; render(); audio.hover(); }));
+  rows.querySelectorAll('.sp-cat.sel .sp-it').forEach((el,j)=>{
+    el.addEventListener('mouseenter',()=>{ ii=j; render(); audio.hover(); });
+    el.addEventListener('click',()=>act());
+  });
+}
+addEventListener('keydown', e=>{
+  if(e.key==='ArrowDown'){ ci=(ci+1)%cats.length; ii=0; audio.tick(); render(); }
+  if(e.key==='ArrowUp'){ ci=(ci-1+cats.length)%cats.length; ii=0; audio.tick(); render(); }
+  if(e.key==='ArrowRight'){ ii=(ii+1)%cats[ci].items.length; audio.tick(); render(); }
+  if(e.key==='ArrowLeft'){ ii=(ii-1+cats[ci].items.length)%cats[ci].items.length; audio.tick(); render(); }
+  if(e.key==='Enter'){ act(); }
+  if(e.key==='Escape'){ history.back(); }
+});
+function act(){
+  audio.confirm();
+  const it = cats[ci].items[ii];
+  if(it.action==='rom'){ document.getElementById('rom').classList.add('on'); return; }
+  toast(it.nm);
+}
+render();
+
+// ROM modal
+const modal = document.getElementById('rom');
+const drop  = document.getElementById('drop');
+const boot  = document.getElementById('boot');
+let picked=null;
+modal.querySelector('[data-x]').addEventListener('click', ()=>{ modal.classList.remove('on'); picked=null; boot.disabled=true; drop.textContent='Drag a file here or click to choose'; });
+drop.addEventListener('click', async ()=>{ const f = await pickFile('.iso,.cso,.pbp,.chd,.zip'); if(f) use(f); });
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('hot'); });
+drop.addEventListener('dragleave', ()=>drop.classList.remove('hot'));
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('hot'); if(e.dataTransfer.files[0]) use(e.dataTransfer.files[0]); });
+function use(f){ picked=f; drop.textContent=`${f.name} · ${(f.size/1024/1024).toFixed(1)} MB`; boot.disabled=false; }
+boot.addEventListener('click', ()=>{ audio.confirm(); modal.classList.remove('on'); toast(`Prepared ${picked.name} — core would mount it here`); });
+
+// Shimmering vertical bars background
+const bg = document.getElementById('bg'), cx = bg.getContext('2d');
+function resize(){ bg.width=innerWidth; bg.height=innerHeight; } addEventListener('resize',resize); resize();
+let t=0;
+function loop(){
+  t+=.016;
+  cx.fillStyle='#0e1a2b'; cx.fillRect(0,0,bg.width,bg.height);
+  for(let i=0;i<48;i++){
+    const px = (i/48)*bg.width;
+    const a = .04 + .22*Math.abs(Math.sin(t*.9 + i*.3));
+    cx.fillStyle = `rgba(140,220,255,${a})`;
+    cx.fillRect(px, 0, bg.width/48*.7, bg.height);
+  }
+  // soft horizontal glow near center
+  const g = cx.createLinearGradient(0,bg.height*.45,0,bg.height*.55);
+  g.addColorStop(0,'rgba(255,255,255,0)'); g.addColorStop(.5,'rgba(120,200,255,.08)'); g.addColorStop(1,'rgba(255,255,255,0)');
+  cx.fillStyle=g; cx.fillRect(0,bg.height*.45,bg.width,bg.height*.1);
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

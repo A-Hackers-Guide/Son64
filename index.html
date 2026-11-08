@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Son64 — Boot Picker</title>
+<meta name="description" content="Pick your generation. Son64 recreates classic console menus in the browser.">
+<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230a0e1a'/><text x='50%' y='58%' text-anchor='middle' font-family='system-ui' font-weight='800' font-size='22' fill='%238fd8ff'>S64</text></svg>">
+<style>
+:root{
+  --bg:#05070d; --bg2:#0b1020; --ink:#e8f2ff; --dim:#8aa0bd;
+  --accent:#5fd4ff; --accent2:#9b7bff; --warn:#ffb86b; --bad:#ff6b9c; --good:#7dffaf;
+  --card:#0e1526; --card2:#121c33; --line:rgba(255,255,255,.08);
+  --glow:0 0 40px rgba(95,212,255,.25), 0 0 120px rgba(155,123,255,.15);
+  --rail: clamp(220px, 22vw, 320px);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:400 15px/1.4 "SF Pro Display",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+body{background:
+  radial-gradient(1200px 700px at 70% -10%, rgba(95,212,255,.10), transparent 60%),
+  radial-gradient(900px 600px at 10% 110%, rgba(155,123,255,.10), transparent 60%),
+  linear-gradient(180deg, #05070d 0%, #08101e 100%);
+}
+canvas#bg{position:fixed;inset:0;z-index:0}
+.scrim{position:fixed;inset:0;background:radial-gradient(1200px 600px at 50% 40%, transparent, rgba(0,0,0,.55) 90%);z-index:1;pointer-events:none}
+
+/* Top chrome */
+.chrome{position:fixed;inset:0 0 auto 0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:22px 28px;pointer-events:none}
+.chrome > *{pointer-events:auto}
+.wordmark{display:flex;align-items:center;gap:12px}
+.mono{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#0d1730,#1a2a52);border:1px solid var(--line);box-shadow:var(--glow);font-weight:800;color:#bfe9ff;letter-spacing:.5px}
+.brand{font-family:"SF Pro Display",system-ui,sans-serif;font-weight:800;letter-spacing:3px;font-size:14px;color:#cfe7ff}
+.brand small{display:block;color:var(--dim);font-weight:500;letter-spacing:4px;font-size:10px;margin-top:2px}
+.toolbar{display:flex;gap:10px}
+.icobtn{background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--ink);width:36px;height:36px;border-radius:10px;display:grid;place-items:center;cursor:pointer;backdrop-filter:blur(8px);transition:all .18s}
+.icobtn:hover{background:rgba(255,255,255,.08);transform:translateY(-1px)}
+.icobtn svg{width:18px;height:18px;opacity:.85}
+
+/* Capability banner */
+.cap{position:fixed;left:50%;transform:translateX(-50%);top:78px;z-index:4;display:flex;gap:10px;padding:8px 12px;background:rgba(10,16,32,.55);border:1px solid var(--line);border-radius:999px;backdrop-filter:blur(10px);font-size:12px;color:var(--dim);letter-spacing:.3px}
+.cap b{color:var(--ink);font-weight:600}
+.cap .dot{width:6px;height:6px;border-radius:50%;background:var(--good);box-shadow:0 0 10px var(--good)}
+.cap .dot.warn{background:var(--warn);box-shadow:0 0 10px var(--warn)}
+.cap .dot.bad{background:var(--bad);box-shadow:0 0 10px var(--bad)}
+
+/* Stage */
+.stage{position:fixed;inset:0;z-index:3;display:grid;grid-template-rows:1fr auto;align-items:center}
+.carousel{perspective:1600px;height:100%;display:grid;place-items:center;overflow:hidden}
+.track{display:flex;gap:28px;padding:0 50vw;transition:transform .6s cubic-bezier(.22,1,.36,1);will-change:transform}
+.card{flex:0 0 var(--rail);height:62vh;max-height:560px;border-radius:22px;position:relative;overflow:hidden;background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);cursor:pointer;transition:transform .5s cubic-bezier(.22,1,.36,1),box-shadow .35s,opacity .35s,filter .35s;filter:grayscale(.3) brightness(.7);transform-style:preserve-3d;opacity:.55}
+.card.active{filter:none;opacity:1;transform:scale(1.04);box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 0 1px rgba(95,212,255,.35), 0 0 120px rgba(95,212,255,.18)}
+.card .art{position:absolute;inset:0;overflow:hidden;border-radius:22px}
+.card .meta{position:absolute;left:18px;right:18px;bottom:18px;z-index:2}
+.card .era{font-size:10px;letter-spacing:4px;color:var(--dim);text-transform:uppercase}
+.card h2{margin:4px 0 6px;font-size:22px;letter-spacing:1px;font-weight:700}
+.card .tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--dim)}
+.card .tag .dot{width:6px;height:6px;border-radius:50%;background:var(--good)}
+.card .tag.warn .dot{background:var(--warn)}
+.card .tag.bad .dot{background:var(--bad)}
+.card .shine{position:absolute;inset:-2px;background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.08) 50%,transparent 60%);transform:translateX(-100%);transition:transform 1.2s;pointer-events:none}
+.card.active .shine{transform:translateX(100%)}
+
+/* Theme art per console — inline svg overlays */
+.art-s1{background:
+  radial-gradient(400px 200px at 50% 40%, rgba(120,120,160,.25), transparent 70%),
+  linear-gradient(180deg,#171a22,#0a0d14)}
+.art-s2{background:
+  radial-gradient(500px 300px at 50% 50%, rgba(80,120,220,.35), transparent 70%),
+  linear-gradient(180deg,#0a1230,#040a1a)}
+.art-sp{background:linear-gradient(180deg,#132033,#0b1522)}
+.art-s3{background:
+  radial-gradient(600px 300px at 50% 60%, rgba(0,80,160,.4), transparent 70%),
+  linear-gradient(180deg,#02070f,#040c1c)}
+.art-sv{background:linear-gradient(180deg,#1a1230,#05030f)}
+.art-s4{background:
+  radial-gradient(500px 280px at 50% 55%, rgba(30,100,220,.35), transparent 70%),
+  linear-gradient(180deg,#071327,#030611)}
+.art-s5{background:
+  radial-gradient(500px 280px at 50% 50%, rgba(40,90,180,.25), transparent 70%),
+  linear-gradient(180deg,#05070d,#02030a)}
+
+/* Tiny decorative canvases live inside each card */
+.card .fx{position:absolute;inset:0}
+
+/* Hint rail */
+.hint{display:flex;gap:18px;align-items:center;justify-content:center;padding:28px 0 34px;color:var(--dim);font-size:12px;letter-spacing:.4px}
+.key{display:inline-grid;place-items:center;min-width:26px;height:22px;padding:0 6px;border-radius:6px;background:rgba(255,255,255,.06);border:1px solid var(--line);font-family:"SF Mono",ui-monospace,Menlo,monospace;font-size:11px;color:var(--ink)}
+
+/* Boot overlay */
+.boot{position:fixed;inset:0;z-index:9;background:#000;opacity:0;pointer-events:none;transition:opacity .5s;display:grid;place-items:center}
+.boot.on{opacity:1;pointer-events:auto}
+.boot .load{width:min(620px,86vw);text-align:center;color:#cfe7ff}
+.boot .bar{height:2px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;margin-top:18px}
+.boot .fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0%;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.boot .label{font-size:11px;letter-spacing:4px;color:var(--dim);text-transform:uppercase;margin-bottom:12px}
+.boot h3{margin:0;font-weight:800;letter-spacing:2px;font-size:28px}
+
+@media (max-width:640px){
+  :root{--rail: 72vw}
+  .card{height:58vh}
+  .cap{font-size:11px}
+}
+
+/* reduced motion */
+@media (prefers-reduced-motion:reduce){
+  .track,.card,.shine,.boot,.fill{transition:none !important}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bg" aria-hidden="true"></canvas>
+<div class="scrim"></div>
+
+<div class="chrome">
+  <div class="wordmark">
+    <div class="mono">S64</div>
+    <div class="brand">SON64<small>BOOT PICKER</small></div>
+  </div>
+  <div class="toolbar">
+    <button class="icobtn" id="muteBtn" title="Toggle sound" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+    </button>
+    <a class="icobtn" href="settings/" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </a>
+  </div>
+</div>
+
+<div class="cap" id="cap" aria-live="polite">Detecting your system…</div>
+
+<main class="stage">
+  <section class="carousel" aria-label="Generation picker">
+    <div class="track" id="track"></div>
+  </section>
+  <div class="hint">
+    <span><span class="key">←</span> <span class="key">→</span> navigate</span>
+    <span><span class="key">Enter</span> boot</span>
+    <span><span class="key">M</span> mute</span>
+    <span>or click a tile</span>
+  </div>
+</main>
+
+<div class="boot" id="boot" aria-hidden="true">
+  <div class="load">
+    <div class="label" id="bootLabel">Booting…</div>
+    <h3 id="bootName">SON</h3>
+    <div class="bar"><div class="fill" id="bootFill"></div></div>
+  </div>
+</div>
+
+<script type="module">
+// ============================================================
+// Son64 — Boot Picker
+// Original, from-scratch visuals and synthesized audio.
+// ============================================================
+
+// --- 1) Capability detection -------------------------------
+function detectGL(){
+  try{
+    const c = document.createElement('canvas');
+    const gl2 = c.getContext('webgl2');
+    const gl  = gl2 || c.getContext('webgl') || c.getContext('experimental-webgl');
+    if(!gl) return {ok:false};
+    const di = gl.getExtension('WEBGL_debug_renderer_info');
+    const renderer = di ? gl.getParameter(di.UNMASKED_RENDERER_WEBGL) : 'unknown';
+    const vendor   = di ? gl.getParameter(di.UNMASKED_VENDOR_WEBGL)   : 'unknown';
+    return {ok:true, webgl2:!!gl2, renderer, vendor,
+      maxTex: gl.getParameter(gl.MAX_TEXTURE_SIZE)};
+  }catch(e){ return {ok:false, err:String(e)}; }
+}
+const caps = {
+  cores:   navigator.hardwareConcurrency || 2,
+  memory:  navigator.deviceMemory || null,      // GB, Chrome-only
+  wasm:    typeof WebAssembly === 'object',
+  gl:      detectGL(),
+  dpr:     window.devicePixelRatio || 1,
+  screen:  { w: screen.width, h: screen.height },
+  touch:   matchMedia('(pointer:coarse)').matches,
+  reduced: matchMedia('(prefers-reduced-motion:reduce)').matches,
+};
+window.__son64caps = caps;
+localStorage.setItem('son64:caps', JSON.stringify(caps));
+
+// Requirements per console — honest about what the browser can do.
+// Running the UI vs running games is tracked separately.
+const CONSOLES = [
+  {id:'son1', name:'Son 1',          era:'1994',  art:'art-s1', ui:{cores:1,mem:1,gl:true},  game:{status:'playable',     note:'PS1-era ROMs run via WebAssembly core'}},
+  {id:'son2', name:'Son 2',          era:'2000',  art:'art-s2', ui:{cores:2,mem:1,gl:true},  game:{status:'experimental', note:'PS2 emulation in-browser is early WASM'}},
+  {id:'sonp', name:'Son Portable',   era:'2004',  art:'art-sp', ui:{cores:2,mem:2,gl:true},  game:{status:'partial',      note:'Portable ISOs run via a WASM core when compatible'}},
+  {id:'son3', name:'Son 3',          era:'2006',  art:'art-s3', ui:{cores:4,mem:2,gl:true},  game:{status:'ui-only',      note:'PS3 emulation is not viable in a browser'}},
+  {id:'sonv', name:'Son Vita',       era:'2011',  art:'art-sv', ui:{cores:2,mem:2,gl:true},  game:{status:'ui-only',      note:'Vita emulation is not viable in a browser'}},
+  {id:'son4', name:'Son 4',          era:'2013',  art:'art-s4', ui:{cores:4,mem:4,gl:true},  game:{status:'ui-only',      note:'PS4 emulation is not viable in a browser'}},
+  {id:'son5', name:'Son 5',          era:'2020',  art:'art-s5', ui:{cores:6,mem:8,gl:true},  game:{status:'ui-only',      note:'PS5 emulation is not viable in a browser'}},
+];
+window.__son64consoles = CONSOLES;
+
+function verdictFor(c){
+  const ok = (caps.cores >= c.ui.cores)
+          && (caps.memory == null || caps.memory >= c.ui.mem)
+          && (caps.gl.ok === c.ui.gl);
+  if(!ok) return {level:'bad',  text:'UI may stutter'};
+  if(c.game.status === 'playable')     return {level:'good', text:'Runs great · ROMs supported'};
+  if(c.game.status === 'partial')      return {level:'good', text:'Runs great · ROMs when compatible'};
+  if(c.game.status === 'experimental') return {level:'warn', text:'UI runs · games experimental'};
+  return {level:'warn', text:'UI runs · no in-browser games'};
+}
+
+// --- 2) Capability banner ---------------------------------
+const cap = document.getElementById('cap');
+{
+  const mem = caps.memory ? `${caps.memory} GB` : '?';
+  const gpu = caps.gl.ok ? (caps.gl.renderer || 'GPU') : 'no GPU';
+  const dot = caps.gl.ok && caps.cores >= 4 ? '' : 'warn';
+  cap.innerHTML = `
+    <span class="dot ${dot}"></span>
+    <span><b>${caps.cores}</b> cores</span>
+    <span>·</span><span><b>${mem}</b> ram</span>
+    <span>·</span><span>${caps.gl.ok ? (caps.gl.webgl2 ? 'WebGL2' : 'WebGL') : 'no WebGL'}</span>
+    <span>·</span><span>${caps.wasm ? 'WASM' : 'no WASM'}</span>
+    <span>·</span><span>${gpu.slice(0,40)}</span>`;
+}
+
+// --- 3) Background: slow parallax wave field --------------
+const bg = document.getElementById('bg');
+const bgx = bg.getContext('2d');
+let W=0,H=0;
+function resize(){
+  const dpr = Math.min(caps.dpr, 1.75);
+  W = bg.width  = innerWidth  * dpr;
+  H = bg.height = innerHeight * dpr;
+  bg.style.width = innerWidth+'px';
+  bg.style.height = innerHeight+'px';
+  bgx.setTransform(dpr,0,0,dpr,0,0);
+}
+addEventListener('resize', resize); resize();
+
+const stars = Array.from({length: 180}, () => ({
+  x: Math.random(), y: Math.random(), z: .4 + Math.random()*.9,
+  r: .3 + Math.random()*1.4, p: Math.random()*Math.PI*2
+}));
+function drawBG(t){
+  bgx.clearRect(0,0,innerWidth,innerHeight);
+  // nebula wisps
+  for(let i=0;i<3;i++){
+    const gx = innerWidth * (.3 + .2*Math.sin(t*.00015 + i));
+    const gy = innerHeight* (.5 + .3*Math.cos(t*.00012 + i*1.7));
+    const g = bgx.createRadialGradient(gx,gy,0, gx,gy, 420);
+    const hue = [210, 270, 190][i];
+    g.addColorStop(0, `hsla(${hue},80%,60%,.10)`);
+    g.addColorStop(1, 'transparent');
+    bgx.fillStyle = g;
+    bgx.fillRect(0,0,innerWidth,innerHeight);
+  }
+  // stars
+  for(const s of stars){
+    const x = s.x*innerWidth, y = s.y*innerHeight;
+    const a = .35 + .35*Math.sin(t*.001 + s.p);
+    bgx.fillStyle = `rgba(200,220,255,${a*s.z})`;
+    bgx.beginPath(); bgx.arc(x,y,s.r*s.z,0,Math.PI*2); bgx.fill();
+  }
+  // subtle horizon line
+  const lg = bgx.createLinearGradient(0,innerHeight*.62,0,innerHeight);
+  lg.addColorStop(0,'rgba(95,212,255,.00)');
+  lg.addColorStop(.6,'rgba(95,212,255,.06)');
+  lg.addColorStop(1,'rgba(0,0,0,.6)');
+  bgx.fillStyle = lg;
+  bgx.fillRect(0,innerHeight*.62,innerWidth,innerHeight*.38);
+}
+let last=0;
+function loop(t){ drawBG(t); requestAnimationFrame(loop); }
+if(!caps.reduced) requestAnimationFrame(loop);
+else drawBG(0);
+
+// --- 4) Synthesized audio ---------------------------------
+let ACTX=null, muted = localStorage.getItem('son64:muted')==='1';
+function ctx(){ if(!ACTX) ACTX = new (window.AudioContext||window.webkitAudioContext)(); if(ACTX.state==='suspended') ACTX.resume(); return ACTX; }
+function env(node, {a=.01,d=.2,s=0,r=.1, peak=.2}={}){
+  const g = ctx().createGain(); g.gain.value=0;
+  node.connect(g); const t=ctx().currentTime;
+  g.gain.linearRampToValueAtTime(peak, t+a);
+  g.gain.linearRampToValueAtTime(peak*s, t+a+d);
+  g.gain.linearRampToValueAtTime(0, t+a+d+r);
+  return g;
+}
+function tone({f=440, type='sine', dur=.15, peak=.18, slide=0}={}){
+  if(muted) return;
+  const o = ctx().createOscillator();
+  o.type=type; o.frequency.value=f;
+  if(slide) o.frequency.linearRampToValueAtTime(f+slide, ctx().currentTime+dur);
+  const g = env(o, {a:.005,d:dur*.3,s:.3,r:dur*.5,peak});
+  g.connect(ctx().destination); o.start();
+  o.stop(ctx().currentTime+dur+.1);
+}
+function tick(){ tone({f:1600,type:'triangle',dur:.06,peak:.07}); }
+function confirm(){ tone({f:520,type:'sine',dur:.1,peak:.15,slide:260}); setTimeout(()=>tone({f:880,type:'sine',dur:.22,peak:.15}),60); }
+function back(){ tone({f:520,type:'sine',dur:.1,peak:.12,slide:-180}); }
+function hover(){ tone({f:900,type:'triangle',dur:.04,peak:.04}); }
+function startup(){
+  if(muted) return;
+  // filtered swell
+  const osc = ctx().createOscillator(); osc.type='sawtooth'; osc.frequency.value=80;
+  const flt = ctx().createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=200;
+  const g   = ctx().createGain(); g.gain.value=0;
+  osc.connect(flt).connect(g).connect(ctx().destination);
+  const t = ctx().currentTime;
+  g.gain.linearRampToValueAtTime(.22, t+1.2);
+  g.gain.linearRampToValueAtTime(0, t+3.0);
+  flt.frequency.linearRampToValueAtTime(1800, t+2.2);
+  osc.frequency.linearRampToValueAtTime(220, t+2.2);
+  osc.start(); osc.stop(t+3.1);
+  // chime
+  setTimeout(()=>{ tone({f:660,type:'sine',dur:.5,peak:.15}); setTimeout(()=>tone({f:990,type:'sine',dur:.9,peak:.12}),120); }, 900);
+}
+
+// mute button
+const muteBtn = document.getElementById('muteBtn');
+function paintMute(){ muteBtn.setAttribute('aria-pressed', muted?'true':'false'); muteBtn.style.opacity = muted?.5:1; }
+paintMute();
+muteBtn.addEventListener('click', ()=>{ muted = !muted; localStorage.setItem('son64:muted', muted?'1':'0'); paintMute(); if(!muted) tick(); });
+addEventListener('keydown', e=>{ if(e.key==='m'||e.key==='M') muteBtn.click(); });
+
+// --- 5) Card art — tiny animated canvases per console -----
+const painters = {
+  // PS1-era: CRT scanlines, neon grid vanish
+  art_s1(cnv,w,h,t){
+    const x=cnv.getContext('2d'); x.clearRect(0,0,w,h);
+    x.fillStyle='#0b0e16'; x.fillRect(0,0,w,h);
+    // grid
+    x.strokeStyle='rgba(120,220,255,.18)'; x.lineWidth=1;
+    const hz = h*.62;
+    for(let i=0;i<10;i++){ const y = hz + (h-hz)*(i/9)**1.6; x.beginPath(); x.moveTo(0,y); x.lineTo(w,y); x.stroke(); }
+    for(let i=-6;i<=6;i++){ x.beginPath(); x.moveTo(w/2,hz); x.lineTo(w/2 + i*(w/3), h); x.stroke(); }
+    // sun
+    const g=x.createLinearGradient(0,hz-80,0,hz+20); g.addColorStop(0,'#ff4fa3'); g.addColorStop(1,'#ffcf69');
+    x.fillStyle=g; x.beginPath(); x.arc(w/2, hz-30, 56, 0, Math.PI*2); x.fill();
+    // scanlines
+    x.fillStyle='rgba(0,0,0,.18)'; for(let y=0;y<h;y+=3) x.fillRect(0,y,w,1);
+  },
+  // PS2-era: floating cubes in blue void
+  art_s2(cnv,w,h,t){
+    const x=cnv.getContext('2d'); x.clearRect(0,0,w,h);
+    const g=x.createRadialGradient(w/2,h*.6,20,w/2,h*.6,Math.max(w,h));
+    g.addColorStop(0,'#1a3c8c'); g.addColorStop(1,'#030820'); x.fillStyle=g; x.fillRect(0,0,w,h);
+    for(let i=0;i<14;i++){
+      const px = (i*83)%w, py = (h*.3 + ((i*131 + t*.04)%h));
+      const s = 10 + (i%4)*6;
+      x.save(); x.translate(px, py); x.rotate((t*.0004)+(i*.6));
+      x.strokeStyle='rgba(180,220,255,.5)'; x.lineWidth=1.5;
+      x.strokeRect(-s/2,-s/2,s,s);
+      x.strokeRect(-s/2+3,-s/2+3,s,s);
+      x.beginPath(); x.moveTo(-s/2,-s/2); x.lineTo(-s/2+3,-s/2+3);
+      x.moveTo(s/2,-s/2); x.lineTo(s/2+3,-s/2+3);
+      x.moveTo(s/2,s/2); x.lineTo(s/2+3,s/2+3);
+      x.moveTo(-s/2,s/2); x.lineTo(-s/2+3,s/2+3);
+      x.stroke(); x.restore();
+    }
+  },
+  // Portable: vertical shimmer bars
+  art_sp(cnv,w,h,t){
+    const x=cnv.getContext('2d'); x.clearRect(0,0,w,h);
+    x.fillStyle='#0e1a2b'; x.fillRect(0,0,w,h);
+    for(let i=0;i<40;i++){
+      const px = (i/40)*w;
+      const a = .05 + .25*Math.abs(Math.sin(t*.0008 + i*.35));
+      x.fillStyle = `rgba(140,220,255,${a})`;
+      x.fillRect(px, 0, w/40*.7, h);
+    }
+  },
+  // PS3-era: the big wave
+  art_s3(cnv,w,h,t){
+    const x=cnv.getContext('2d'); x.clearRect(0,0,w,h);
+    const g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'#021425'); g.addColorStop(1,'#000208');
+    x.fillStyle=g; x.fillRect(0,0,w,h);
+    for(let layer=0; layer<3; layer++){
+      x.beginPath();
+      for(let px=0; px<=w; px+=6){
+        const y = h*.6 + Math.sin(px*.025 + t*.0009 + layer*1.2)*22 + Math.sin(px*.008 - t*.0005)*30 + layer*18;
+        if(px===0) x.moveTo(px,y); else x.lineTo(px,y);
+      }
+      x.lineTo(w,h); x.lineTo(0,h); x.closePath();
+      x.fillStyle = `rgba(80,160,230,${.14 - layer*.04})`;
+      x.fill();
+    }
+  },
+  // Vita: bubble field
+  art_sv(cnv,w,h,t){
+    const x=cnv.getContext('2d'); x.clearRect(0,0,w,h);
+    const g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'#1a0d3a'); g.addColorStop(1,'#060214');
+    x.fillStyle=g; x.fillRect(0,0,w,h);
+    const colors=['#ff6cc1','#ffd36b','#6bd1ff','#b0ff8b','#c38bff'];
+    for(let i=0;i<10;i++){
+      const px = (i*61 + t*.02)%w;
+      const py = h*.5 + Math.sin(t*.0007 + i)*h*.15;
+      const r  = 16 + (i%3)*6;
+      x.fillStyle = colors[i%colors.length] + '66';
+      x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill();
+      x.strokeStyle='rgba(255,255,255,.4)'; x.stroke();
+    }
+  },
+  // PS4-era: cool blue sweep
+  art_s4(cnv,w,h,t){
+    const x=cnv.getContext('2d'); x.clearRect(0,0,w,h);
+    const g=x.createLinearGradient(0,0,w,h);
+    const k = (Math.sin(t*.0004)+1)/2;
+    g.addColorStop(0, `rgba(10,30,70,1)`);
+    g.addColorStop(.5, `rgba(${30+k*30},${80+k*40},${200-k*40},1)`);
+    g.addColorStop(1, `rgba(2,6,16,1)`);
+    x.fillStyle=g; x.fillRect(0,0,w,h);
+    // thin bars
+    x.strokeStyle='rgba(255,255,255,.07)'; x.lineWidth=1;
+    for(let i=0;i<20;i++){ x.beginPath(); x.moveTo((i/20)*w + t*.02%w, 0); x.lineTo((i/20)*w - 60 + t*.02%w, h); x.stroke(); }
+  },
+  // PS5-era: dark particle sheen
+  art_s5(cnv,w,h,t){
+    const x=cnv.getContext('2d'); x.clearRect(0,0,w,h);
+    const g=x.createRadialGradient(w*.5,h*.5,40,w*.5,h*.5,Math.max(w,h));
+    g.addColorStop(0,'#0a1230'); g.addColorStop(1,'#000106'); x.fillStyle=g; x.fillRect(0,0,w,h);
+    for(let i=0;i<80;i++){
+      const a = .1 + .5*Math.abs(Math.sin(t*.001 + i));
+      const r = .4 + Math.abs(Math.sin(i*1.3))*1.6;
+      const px = ((i*47 + t*.03)%w);
+      const py = ((i*113 - t*.02)%h + h)%h;
+      x.fillStyle=`rgba(180,220,255,${a})`;
+      x.beginPath(); x.arc(px,py,r,0,Math.PI*2); x.fill();
+    }
+    // slow sheen band
+    const sw = w*.25, sx = ((t*.05)%(w+sw*2))-sw;
+    const sg = x.createLinearGradient(sx,0,sx+sw,0);
+    sg.addColorStop(0,'transparent'); sg.addColorStop(.5,'rgba(255,255,255,.05)'); sg.addColorStop(1,'transparent');
+    x.fillStyle=sg; x.fillRect(sx,0,sw,h);
+  },
+};
+
+// --- 6) Build cards ---------------------------------------
+const track = document.getElementById('track');
+const cards = CONSOLES.map((c, i) => {
+  const v = verdictFor(c);
+  const el = document.createElement('article');
+  el.className = 'card ' + c.art;
+  el.dataset.id = c.id;
+  el.innerHTML = `
+    <div class="art ${c.art}"><canvas class="fx" aria-hidden="true"></canvas></div>
+    <div class="meta">
+      <div class="era">${c.era}</div>
+      <h2>${c.name}</h2>
+      <span class="tag ${v.level==='good'?'':v.level==='warn'?'warn':'bad'}"><span class="dot"></span>${v.text}</span>
+    </div>
+    <div class="shine"></div>`;
+  track.appendChild(el);
+  return el;
+});
+
+// Paint card canvases
+const paintJobs = cards.map(el => {
+  const art = el.querySelector('.fx');
+  const painter = painters['art_' + el.dataset.id.slice(3)] || painters.art_s3;
+  return { el, art, painter };
+});
+function resizeCards(){
+  for(const {el, art} of paintJobs){
+    const r = el.getBoundingClientRect();
+    const dpr = Math.min(caps.dpr, 1.5);
+    art.width  = Math.max(1, r.width*dpr);
+    art.height = Math.max(1, r.height*dpr);
+    art.style.width=r.width+'px'; art.style.height=r.height+'px';
+    art.getContext('2d').setTransform(dpr,0,0,dpr,0,0);
+  }
+}
+new ResizeObserver(resizeCards).observe(track);
+setTimeout(resizeCards, 10);
+function paintCards(t){
+  for(const j of paintJobs){
+    const r = j.art.getBoundingClientRect();
+    j.painter(j.art, r.width, r.height, t);
+  }
+  requestAnimationFrame(paintCards);
+}
+if(!caps.reduced) requestAnimationFrame(paintCards);
+else setTimeout(()=>paintCards(0), 50);
+
+// --- 7) Carousel logic ------------------------------------
+let idx = CONSOLES.findIndex(c => c.id === (localStorage.getItem('son64:last') || 'son3'));
+if(idx<0) idx = 3;
+function layout(){
+  const rail = cards[0].getBoundingClientRect().width + 28;
+  const centerShift = innerWidth/2 - rail/2;
+  track.style.transform = `translateX(${centerShift - idx*rail - 50*0}px) translateX(-50vw)`;
+  // Keeping the padding: carousel already padded by 50vw so simpler:
+  track.style.transform = `translateX(${-idx*rail}px)`;
+  cards.forEach((el,i)=>{
+    el.classList.toggle('active', i===idx);
+    const d = i - idx;
+    el.style.transform = i===idx ? 'scale(1.04) rotateY(0deg)' : `rotateY(${d>0?-14:14}deg) scale(.92) translateZ(-20px)`;
+    el.style.zIndex = 10 - Math.abs(d);
+  });
+}
+addEventListener('resize', layout);
+setTimeout(layout, 30);
+
+function move(d){
+  const next = Math.max(0, Math.min(CONSOLES.length-1, idx+d));
+  if(next===idx) return;
+  idx = next; layout(); tick();
+}
+cards.forEach((el,i)=>{
+  el.addEventListener('mouseenter', ()=>{ if(i!==idx){ idx=i; layout(); hover(); } });
+  el.addEventListener('click', ()=>{ if(i===idx) boot(CONSOLES[idx]); else { idx=i; layout(); tick(); } });
+});
+addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight') move(+1);
+  else if(e.key==='ArrowLeft') move(-1);
+  else if(e.key==='Enter' || e.key===' ') boot(CONSOLES[idx]);
+});
+// swipe
+let tx=0, down=false;
+addEventListener('pointerdown', e=>{ if(e.target.closest('.icobtn,a,button'))return; down=true; tx=e.clientX; });
+addEventListener('pointerup',   e=>{ if(!down)return; down=false; const dx=e.clientX-tx; if(Math.abs(dx)>40) move(dx<0?+1:-1); });
+
+// --- 8) Boot transition -----------------------------------
+const bootEl = document.getElementById('boot');
+const bootFill = document.getElementById('bootFill');
+const bootName = document.getElementById('bootName');
+const bootLabel= document.getElementById('bootLabel');
+function boot(c){
+  localStorage.setItem('son64:last', c.id);
+  confirm();
+  bootName.textContent = c.name.toUpperCase();
+  bootLabel.textContent = 'Preparing ' + c.name;
+  bootEl.classList.add('on');
+  requestAnimationFrame(()=>bootFill.style.width='100%');
+  startup();
+  setTimeout(()=>{ location.href = `consoles/${c.id}/`; }, 1750);
+}
+
+// First gesture unlocks audio in most browsers.
+addEventListener('pointerdown', ()=>ctx(), {once:true});
+addEventListener('keydown',     ()=>ctx(), {once:true});
+</script>
+</body>
+</html>

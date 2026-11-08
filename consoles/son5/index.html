@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Son 5 — Home</title>
+<link rel="stylesheet" href="../../css/console.css">
+<style>
+body{background:#000}
+.s5-shell{position:fixed;inset:0;z-index:2;display:grid;grid-template-rows:auto auto 1fr auto}
+.s5-tabs{display:flex;gap:30px;padding:70px 6vw 0;color:#9ab6d9;font-size:13px;letter-spacing:4px;text-transform:uppercase}
+.s5-tabs .t{opacity:.5;cursor:pointer;padding:8px 2px;border-bottom:2px solid transparent;transition:all .2s}
+.s5-tabs .t:hover,.s5-tabs .t.sel{opacity:1;color:#fff;border-color:#5fd4ff}
+.s5-feature{padding:20px 6vw 14px;display:grid;grid-template-columns:1fr auto;align-items:end;gap:20px;position:relative}
+.s5-feature h1{margin:0;font-size:clamp(28px,4vw,46px);letter-spacing:1px;font-weight:700;line-height:1}
+.s5-feature p{margin:8px 0 0;color:#9ab6d9;max-width:620px}
+.s5-feature .btns{display:flex;gap:10px}
+.s5-grid{padding:4px 6vw 28px;overflow:hidden}
+.s5-row{display:flex;gap:16px;transition:transform .4s cubic-bezier(.22,1,.36,1)}
+.s5-tile{flex:0 0 clamp(170px,19vw,230px);height:clamp(130px,20vh,200px);border-radius:12px;background:linear-gradient(160deg,#0d1836,#06091a);border:1px solid rgba(180,220,255,.12);padding:14px;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;color:#cfe3ff;transition:all .25s;position:relative;overflow:hidden}
+.s5-tile:hover,.s5-tile.sel{transform:translateY(-6px) scale(1.03);box-shadow:0 30px 60px rgba(0,80,200,.3),0 0 0 1px rgba(140,200,255,.4)}
+.s5-tile .nm{font-size:14px;letter-spacing:.5px;font-weight:600}
+.s5-tile .dm{font-size:11px;color:#89a7cc}
+.s5-tile .ic{font-size:36px;color:#dceeff;text-shadow:0 0 24px rgba(140,200,255,.5)}
+.s5-tile .glow{position:absolute;inset:0;background:radial-gradient(400px 200px at 50% -40%,rgba(120,180,255,.3),transparent 60%);opacity:0;transition:opacity .25s}
+.s5-tile.sel .glow,.s5-tile:hover .glow{opacity:1}
+.s5-ctrl{position:fixed;bottom:0;left:0;right:0;z-index:4;background:linear-gradient(180deg,transparent,rgba(5,7,13,.95));padding:16px 6vw 20px;transform:translateY(100%);transition:transform .35s;color:#cfe3ff;border-top:1px solid var(--line)}
+.s5-ctrl.on{transform:translateY(0)}
+.s5-ctrl-row{display:flex;gap:14px;align-items:center;overflow-x:auto}
+.s5-cc{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 18px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line);min-width:110px;cursor:pointer;transition:all .2s}
+.s5-cc:hover{background:rgba(255,255,255,.08)}
+.s5-cc .i{font-size:22px}
+.s5-cc .l{font-size:11px;letter-spacing:1px;color:#9ab6d9}
+.s5-footer{padding:12px 6vw;color:#89a7cc;font-size:11px;letter-spacing:3px;text-transform:uppercase;display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<canvas class="console-bg" id="bg"></canvas>
+
+<div class="top-hud">
+  <div class="left"><a href="../../" class="back-link">◂ Boot picker</a><span class="pill">Son 5</span></div>
+  <div class="right"><span class="hud-time" id="clock">--:--</span><button class="pill" id="ccToggle">Control Center</button></div>
+</div>
+
+<main class="s5-shell">
+  <nav class="s5-tabs" id="tabs">
+    <div class="t sel" data-k="games">Games</div>
+    <div class="t"      data-k="media">Media</div>
+    <div class="t"      data-k="store">Store</div>
+    <div class="t"      data-k="settings">Settings</div>
+  </nav>
+  <section class="s5-feature">
+    <div>
+      <h1 id="ftTitle">Space Drift</h1>
+      <p id="ftDesc">An original demo scene. Thrusters, nebulae, no copyrighted content.</p>
+    </div>
+    <div class="btns">
+      <button class="btn primary" id="playBtn">▶ Play</button>
+      <button class="btn" id="addBtn">⤓ Add title</button>
+    </div>
+  </section>
+  <section class="s5-grid">
+    <div class="s5-row" id="row"></div>
+  </section>
+  <footer class="s5-footer">
+    <span>← → tile · ↑ ↓ tab · enter play · c · control center · esc back</span>
+    <span>Son 5</span>
+  </footer>
+</main>
+
+<aside class="s5-ctrl" id="cc">
+  <div class="s5-ctrl-row">
+    <div class="s5-cc"><div class="i">⏻</div><div class="l">Power</div></div>
+    <div class="s5-cc"><div class="i">🎙</div><div class="l">Mic</div></div>
+    <div class="s5-cc"><div class="i">📶</div><div class="l">Network</div></div>
+    <div class="s5-cc"><div class="i">♪</div><div class="l">Sound</div></div>
+    <div class="s5-cc"><div class="i">◉</div><div class="l">Controllers</div></div>
+    <div class="s5-cc"><div class="i">✿</div><div class="l">Accessibility</div></div>
+    <div class="s5-cc"><div class="i">👥</div><div class="l">Profile</div></div>
+  </div>
+</aside>
+
+<div class="modal" id="rom"><div class="box">
+  <h3>Add a title</h3>
+  <p>Son 5-era emulation is <b>not viable in a browser</b>. The shell registers a file so the UI can display it.</p>
+  <div class="rom-drop" id="drop">Drag a file here or click to choose</div>
+  <div class="row"><button class="btn" data-x>Cancel</button><button class="btn primary" id="boot" disabled>Add</button></div>
+</div></div>
+
+<script type="module">
+import { audio, clock, toast, pickFile } from '../../js/shared.js';
+clock(document.getElementById('clock'));
+
+const games = [
+  {ic:'◉', nm:'Space Drift',  dm:'Demo · Original'},
+  {ic:'◉', nm:'Neon Rally',   dm:'Demo · Original'},
+  {ic:'◉', nm:'Gloss',        dm:'Demo · Original'},
+  {ic:'◉', nm:'Tideglass',    dm:'Demo · Original'},
+  {ic:'⤓', nm:'Add title',    dm:'From a file', action:'rom'},
+];
+const media = [
+  {ic:'▶', nm:'Media Player', dm:'App'},
+  {ic:'🌐',nm:'Browser',      dm:'App'},
+  {ic:'♪', nm:'Music',        dm:'App'},
+  {ic:'◇', nm:'Photos',       dm:'App'},
+];
+const store = [
+  {ic:'▦', nm:'Featured',   dm:'Nothing to list'},
+  {ic:'★', nm:'Deals',      dm:'—'},
+  {ic:'⤓', nm:'Add title',  dm:'From a file', action:'rom'},
+];
+const settings = [
+  {ic:'⎙',nm:'System',     dm:'About Son 5'},
+  {ic:'🕑',nm:'Time',       dm:'Clock'},
+  {ic:'♪', nm:'Sound',      dm:'Output'},
+  {ic:'⇆', nm:'Network',    dm:'Wi-Fi'},
+  {ic:'👥',nm:'Users',      dm:'Switch'},
+];
+const maps = { games, media, store, settings };
+let tab='games', ri=0;
+
+const tabs = document.querySelectorAll('.s5-tabs .t');
+const rowEl= document.getElementById('row');
+const title= document.getElementById('ftTitle');
+const desc = document.getElementById('ftDesc');
+
+function render(){
+  tabs.forEach(t=>t.classList.toggle('sel', t.dataset.k===tab));
+  const data = maps[tab];
+  ri = Math.min(ri, data.length-1);
+  rowEl.innerHTML = data.map((t,i)=>`
+    <div class="s5-tile ${i===ri?'sel':''}" data-i="${i}">
+      <div class="ic">${t.ic}</div>
+      <div><div class="nm">${t.nm}</div><div class="dm">${t.dm}</div></div>
+      <div class="glow"></div>
+    </div>`).join('');
+  const sel = rowEl.children[ri]; if(sel){
+    const r = sel.getBoundingClientRect(); const target = innerWidth*.24 - (r.left + r.width/2 - rowEl.getBoundingClientRect().left);
+    rowEl.style.transform = `translateX(${Math.min(0, target)}px)`;
+  }
+  const feat = data[ri]||data[0];
+  title.textContent = feat.nm; desc.textContent = feat.dm;
+  rowEl.querySelectorAll('.s5-tile').forEach(el=>{
+    el.addEventListener('mouseenter',()=>{ ri=+el.dataset.i; audio.hover(); render(); });
+    el.addEventListener('click',()=>act());
+  });
+}
+tabs.forEach(t=>t.addEventListener('click',()=>{ tab=t.dataset.k; ri=0; audio.tick(); render(); }));
+addEventListener('keydown', e=>{
+  const keys = ['games','media','store','settings'];
+  if(e.key==='ArrowUp'){ const i=keys.indexOf(tab); tab=keys[(i-1+keys.length)%keys.length]; ri=0; audio.tick(); render(); }
+  if(e.key==='ArrowDown'){ const i=keys.indexOf(tab); tab=keys[(i+1)%keys.length]; ri=0; audio.tick(); render(); }
+  const d = maps[tab];
+  if(e.key==='ArrowRight'){ ri=(ri+1)%d.length; audio.tick(); render(); }
+  if(e.key==='ArrowLeft'){  ri=(ri-1+d.length)%d.length; audio.tick(); render(); }
+  if(e.key==='Enter'){ act(); }
+  if(e.key==='Escape'){ if(cc.classList.contains('on')) cc.classList.remove('on'); else { audio.back(); history.back(); } }
+  if(e.key==='c'||e.key==='C'){ cc.classList.toggle('on'); audio.tick(); }
+});
+function act(){
+  audio.confirm();
+  const it = maps[tab][ri];
+  if(it.action==='rom'){ document.getElementById('rom').classList.add('on'); return; }
+  toast(`Launching ${it.nm} (demo shell)`);
+}
+document.getElementById('playBtn').addEventListener('click', act);
+document.getElementById('addBtn').addEventListener('click', ()=>{ audio.tick(); document.getElementById('rom').classList.add('on'); });
+const cc = document.getElementById('cc');
+document.getElementById('ccToggle').addEventListener('click', ()=>{ cc.classList.toggle('on'); audio.tick(); });
+render();
+
+// ROM modal
+const modal = document.getElementById('rom');
+const drop  = document.getElementById('drop');
+const boot  = document.getElementById('boot');
+let picked=null;
+modal.querySelector('[data-x]').addEventListener('click', ()=>{ modal.classList.remove('on'); picked=null; boot.disabled=true; drop.textContent='Drag a file here or click to choose'; });
+drop.addEventListener('click', async ()=>{ const f = await pickFile('.pkg,.iso,.zip,.bin'); if(f) use(f); });
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('hot'); });
+drop.addEventListener('dragleave', ()=>drop.classList.remove('hot'));
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('hot'); if(e.dataTransfer.files[0]) use(e.dataTransfer.files[0]); });
+function use(f){ picked=f; drop.textContent=`${f.name} · ${(f.size/1024/1024).toFixed(1)} MB`; boot.disabled=false; }
+boot.addEventListener('click', ()=>{ audio.confirm(); modal.classList.remove('on'); toast(`Added ${picked.name} · UI shell only`); });
+
+// Particle sheen background
+const bg = document.getElementById('bg'), c = bg.getContext('2d');
+function resize(){ bg.width=innerWidth; bg.height=innerHeight; } addEventListener('resize',resize); resize();
+const parts = Array.from({length:120}, () => ({x:Math.random(), y:Math.random(), vx:(Math.random()-.5)*.0003, vy:(Math.random()-.5)*.0003, r:.3 + Math.random()*1.4}));
+let t=0;
+function loop(){
+  t+=.01;
+  const g = c.createRadialGradient(bg.width*.5,bg.height*.5,60,bg.width*.5,bg.height*.5,Math.max(bg.width,bg.height));
+  g.addColorStop(0,'#0a1230'); g.addColorStop(1,'#000106'); c.fillStyle=g; c.fillRect(0,0,bg.width,bg.height);
+  // deep background particles
+  for(const p of parts){
+    p.x += p.vx; p.y += p.vy; if(p.x<0||p.x>1) p.vx*=-1; if(p.y<0||p.y>1) p.vy*=-1;
+    const a = .3 + .6*Math.abs(Math.sin(t + (p.x+p.y)*10));
+    c.fillStyle=`rgba(180,220,255,${a})`;
+    c.beginPath(); c.arc(p.x*bg.width, p.y*bg.height, p.r, 0, Math.PI*2); c.fill();
+  }
+  // slow sheen band
+  const sw = bg.width*.3, sx = ((t*40)%(bg.width+sw*2)) - sw;
+  const sg = c.createLinearGradient(sx,0,sx+sw,0);
+  sg.addColorStop(0,'transparent'); sg.addColorStop(.5,'rgba(255,255,255,.03)'); sg.addColorStop(1,'transparent');
+  c.fillStyle=sg; c.fillRect(sx,0,sw,bg.height);
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

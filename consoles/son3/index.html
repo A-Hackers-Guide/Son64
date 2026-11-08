@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Son 3 — Home</title>
+<link rel="stylesheet" href="../../css/console.css">
+<style>
+body{background:#000}
+.s3-shell{position:fixed;inset:0;z-index:2;display:flex;align-items:center}
+.s3-rail{display:flex;gap:70px;padding:0 10vw;transition:transform .45s cubic-bezier(.22,1,.36,1);will-change:transform}
+.s3-cat{display:flex;flex-direction:column;align-items:center;gap:14px;opacity:.35;transition:opacity .35s}
+.s3-cat.sel{opacity:1}
+.s3-c-icon{width:70px;height:70px;display:grid;place-items:center;font-size:32px;color:#eef6ff;background:
+  radial-gradient(circle at 30% 20%, rgba(255,255,255,.35), rgba(255,255,255,0) 50%),
+  linear-gradient(145deg,rgba(80,140,210,.5),rgba(10,20,40,.7));
+  border:1px solid rgba(180,220,255,.3);border-radius:10px;box-shadow:0 10px 40px rgba(60,120,200,.25),inset 0 0 20px rgba(140,200,255,.15)}
+.s3-cat.sel .s3-c-icon{box-shadow:0 0 50px rgba(160,210,255,.55),inset 0 0 30px rgba(255,255,255,.12)}
+.s3-c-label{letter-spacing:6px;font-size:14px;color:#dfeeff;text-transform:uppercase;font-weight:300;text-shadow:0 0 12px rgba(120,180,255,.35)}
+.s3-items{position:absolute;left:50%;top:50%;transform:translate(-50%,0);display:flex;flex-direction:column;gap:22px;margin-top:22px;opacity:0;pointer-events:none;transition:opacity .35s}
+.s3-cat.sel .s3-items{opacity:1;pointer-events:auto}
+.s3-it{display:grid;grid-template-columns:48px 1fr;align-items:center;gap:14px;min-width:260px;padding:8px 14px;border-radius:10px;cursor:pointer;color:#cfe3ff;transition:all .18s;border:1px solid transparent}
+.s3-it:hover,.s3-it.sel2{background:linear-gradient(90deg,rgba(100,170,240,.25),rgba(100,170,240,0));border-color:rgba(180,220,255,.25);color:#fff}
+.s3-it .iic{width:46px;height:46px;display:grid;place-items:center;font-size:22px;background:
+  radial-gradient(circle at 30% 20%,rgba(255,255,255,.35),rgba(255,255,255,0) 50%),
+  linear-gradient(145deg,rgba(100,160,220,.45),rgba(20,40,80,.7));
+  border:1px solid rgba(180,220,255,.25);border-radius:8px}
+.s3-it .inm{font-size:14px;letter-spacing:1.5px;text-transform:uppercase}
+.s3-it .idm{font-size:11px;letter-spacing:1px;color:#7fa0c6}
+.s3-ps{position:fixed;left:30px;bottom:26px;color:#8ba6c8;font-size:11px;letter-spacing:3px;text-transform:uppercase;z-index:3}
+.s3-user{position:fixed;right:30px;top:110px;color:#9bb6d4;letter-spacing:3px;font-size:11px;text-transform:uppercase;z-index:3;text-align:right}
+.s3-user b{display:block;color:#fff;font-weight:500;letter-spacing:4px;font-size:14px;margin-bottom:4px}
+</style>
+</head>
+<body>
+<canvas class="console-bg" id="bg"></canvas>
+
+<div class="top-hud">
+  <div class="left"><a href="../../" class="back-link">◂ Boot picker</a><span class="pill">Son 3</span></div>
+  <div class="right">
+    <span class="hud-time" id="clock">--:--</span>
+    <span class="pill">SIGN IN</span>
+  </div>
+</div>
+
+<div class="s3-user"><b>GUEST</b>Welcome to Son 3</div>
+
+<main class="s3-shell">
+  <div class="s3-rail" id="rail"></div>
+</main>
+
+<div class="s3-ps">← → category &nbsp;·&nbsp; ↑ ↓ item &nbsp;·&nbsp; enter confirm &nbsp;·&nbsp; esc back</div>
+
+<div class="modal" id="rom"><div class="box">
+  <h3>Mount Disc Image</h3>
+  <p>Son 3-era emulation is <b>not viable in a browser</b>. This shell lets you point at a game image so the UI can list it; actual gameplay would need native tooling outside the browser.</p>
+  <div class="rom-drop" id="drop">Drag a file here or click to choose</div>
+  <div class="row"><button class="btn" data-x>Cancel</button><button class="btn primary" id="boot" disabled>Mount</button></div>
+</div></div>
+
+<script type="module">
+import { audio, clock, toast, pickFile } from '../../js/shared.js';
+clock(document.getElementById('clock'));
+
+const cats = [
+  {k:'users',    ic:'👥', nm:'Users',    items:[
+    {ic:'◉',nm:'Guest',dm:'Signed in'},{ic:'➕',nm:'New user',dm:'Create a profile'}
+  ]},
+  {k:'settings', ic:'⚙',  nm:'Settings', items:[
+    {ic:'⎙',nm:'System',dm:'About Son 3'},{ic:'🕑',nm:'Date & Time',dm:'Set clock'},
+    {ic:'♪',nm:'Sound',dm:'Output · master'},{ic:'⇆',nm:'Network',dm:'Wi-Fi · Ethernet'},
+    {ic:'⌨',nm:'Input',dm:'Keyboard · gamepad'}
+  ]},
+  {k:'photo',    ic:'◇',  nm:'Photo',    items:[{ic:'▣',nm:'Library',dm:'0 photos'},{ic:'☁',nm:'Online',dm:'Browse'}]},
+  {k:'music',    ic:'♪',  nm:'Music',    items:[{ic:'▦',nm:'Library',dm:'Empty'},{ic:'⏵',nm:'Now playing',dm:'—'}]},
+  {k:'video',    ic:'▶',  nm:'Video',    items:[{ic:'▦',nm:'Library',dm:'Empty'},{ic:'⇡',nm:'Stream',dm:'From device'}]},
+  {k:'tv',       ic:'📺', nm:'TV',       items:[{ic:'⎊',nm:'Live',dm:'Not configured'}]},
+  {k:'game',     ic:'◉',  nm:'Game',     items:[
+    {ic:'⤓',nm:'Load image',dm:'Mount a disc image', action:'rom'},
+    {ic:'⌂',nm:'Saves',dm:'Empty'},
+    {ic:'↺',nm:'Resume',dm:'Nothing to resume'}
+  ]},
+  {k:'network',  ic:'⟳',  nm:'Network',  items:[{ic:'🌐',nm:'Browser',dm:'Open a page'},{ic:'⇆',nm:'Peers',dm:'None nearby'}]},
+  {k:'friends',  ic:'✶',  nm:'Friends',  items:[{ic:'👤',nm:'List',dm:'0 online'},{ic:'✉',nm:'Messages',dm:'Inbox empty'}]},
+];
+let ci = 6, ii = 0;
+const rail = document.getElementById('rail');
+function render(){
+  rail.innerHTML = cats.map((c,i)=>`
+    <div class="s3-cat ${i===ci?'sel':''}" data-i="${i}" style="position:relative">
+      <div class="s3-c-icon">${c.ic}</div>
+      <div class="s3-c-label">${c.nm}</div>
+      <div class="s3-items">${c.items.map((it,j)=>`
+        <div class="s3-it ${i===ci && j===ii?'sel2':''}" data-j="${j}">
+          <div class="iic">${it.ic}</div>
+          <div><div class="inm">${it.nm}</div><div class="idm">${it.dm}</div></div>
+        </div>`).join('')}</div>
+    </div>`).join('');
+  // center the selected category
+  const el = rail.children[ci];
+  if(el){
+    const r = el.getBoundingClientRect();
+    const target = innerWidth/2 - (r.left + r.width/2 - rail.getBoundingClientRect().left);
+    rail.style.transform = `translateX(${target}px)`;
+  }
+  rail.querySelectorAll('.s3-cat').forEach((el,i)=>el.addEventListener('mouseenter',()=>{ ci=i; ii=0; render(); audio.hover(); }));
+  rail.querySelectorAll('.s3-cat.sel .s3-it').forEach((el,j)=>{
+    el.addEventListener('mouseenter',()=>{ ii=j; render(); audio.hover(); });
+    el.addEventListener('click',()=>act());
+  });
+}
+addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight'){ ci=(ci+1)%cats.length; ii=0; audio.tick(); render(); }
+  if(e.key==='ArrowLeft'){ ci=(ci-1+cats.length)%cats.length; ii=0; audio.tick(); render(); }
+  if(e.key==='ArrowDown'){ ii=(ii+1)%cats[ci].items.length; audio.tick(); render(); }
+  if(e.key==='ArrowUp'){ ii=(ii-1+cats[ci].items.length)%cats[ci].items.length; audio.tick(); render(); }
+  if(e.key==='Enter'){ act(); }
+  if(e.key==='Escape'){ audio.back(); history.back(); }
+});
+function act(){
+  audio.confirm();
+  const it = cats[ci].items[ii];
+  if(it.action==='rom'){ document.getElementById('rom').classList.add('on'); return; }
+  toast(`${cats[ci].nm} · ${it.nm}`);
+}
+render(); addEventListener('resize', render);
+
+// ROM modal
+const modal = document.getElementById('rom');
+const drop  = document.getElementById('drop');
+const boot  = document.getElementById('boot');
+let picked=null;
+modal.querySelector('[data-x]').addEventListener('click', ()=>{ modal.classList.remove('on'); picked=null; boot.disabled=true; drop.textContent='Drag a file here or click to choose'; });
+drop.addEventListener('click', async ()=>{ const f = await pickFile('.iso,.bin,.cue,.chd,.pkg'); if(f) use(f); });
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('hot'); });
+drop.addEventListener('dragleave', ()=>drop.classList.remove('hot'));
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('hot'); if(e.dataTransfer.files[0]) use(e.dataTransfer.files[0]); });
+function use(f){ picked=f; drop.textContent=`${f.name} · ${(f.size/1024/1024).toFixed(1)} MB`; boot.disabled=false; }
+boot.addEventListener('click', ()=>{ audio.confirm(); modal.classList.remove('on'); toast(`Mounted ${picked.name} · UI shell only`); });
+
+// Wave background — the signature animated ribbons
+const bg = document.getElementById('bg'), c = bg.getContext('2d');
+function resize(){ bg.width=innerWidth; bg.height=innerHeight; } addEventListener('resize',resize); resize();
+let t=0;
+function loop(){
+  t += .009;
+  // sky gradient
+  const g = c.createLinearGradient(0,0,0,bg.height);
+  g.addColorStop(0,'#021425'); g.addColorStop(1,'#000208');
+  c.fillStyle=g; c.fillRect(0,0,bg.width,bg.height);
+  // three stacked waves
+  for(let layer=0; layer<4; layer++){
+    c.beginPath();
+    for(let px=-20; px<=bg.width+20; px+=6){
+      const y = bg.height*.58
+              + Math.sin(px*.012 + t + layer*1.1)*34
+              + Math.sin(px*.003 - t*.7 + layer*.6)*52
+              + layer*22;
+      if(px===-20) c.moveTo(px,y); else c.lineTo(px,y);
+    }
+    c.lineTo(bg.width+20, bg.height+20); c.lineTo(-20, bg.height+20); c.closePath();
+    c.fillStyle = `rgba(80,160,230,${.16 - layer*.034})`;
+    c.fill();
+  }
+  // crest highlight
+  c.beginPath();
+  for(let px=-20; px<=bg.width+20; px+=6){
+    const y = bg.height*.58 + Math.sin(px*.012 + t)*34 + Math.sin(px*.003 - t*.7)*52 - 2;
+    if(px===-20) c.moveTo(px,y); else c.lineTo(px,y);
+  }
+  c.strokeStyle='rgba(200,230,255,.35)'; c.lineWidth=1.2; c.stroke();
+  // top glow sweep
+  const sx = (t*60)%(bg.width+200) - 100;
+  const sg = c.createLinearGradient(sx,0,sx+200,0);
+  sg.addColorStop(0,'transparent'); sg.addColorStop(.5,'rgba(255,255,255,.04)'); sg.addColorStop(1,'transparent');
+  c.fillStyle=sg; c.fillRect(sx,0,200,bg.height*.5);
+  requestAnimationFrame(loop);
+}
+loop();
+
+// Startup chime
+setTimeout(()=>audio.startup(), 150);
+</script>
+</body>
+</html>

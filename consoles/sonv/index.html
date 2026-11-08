@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Son Vita — Home</title>
+<link rel="stylesheet" href="../../css/console.css">
+<style>
+body{background:#000}
+.sv-wrap{position:fixed;inset:0;z-index:2;padding:80px 6vw 40px;display:grid;grid-template-rows:1fr auto;gap:20px}
+.sv-pages{position:relative;height:100%}
+.sv-page{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:min-content;gap:20px;align-content:center;padding:40px 10%;opacity:0;pointer-events:none;transition:opacity .35s, transform .35s}
+.sv-page.on{opacity:1;pointer-events:auto;transform:translateX(0)}
+.sv-page.prev{transform:translateX(-30px)}
+.sv-page.next{transform:translateX(30px)}
+.sv-bub{display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;transition:transform .2s}
+.sv-bub:hover,.sv-bub.sel{transform:scale(1.08)}
+.sv-bub .b{width:84px;height:84px;border-radius:50%;background:linear-gradient(145deg,#ffd36b,#ff6c9c);display:grid;place-items:center;color:#fff;font-size:30px;box-shadow:0 10px 30px rgba(255,140,170,.35),inset 0 -6px 12px rgba(0,0,0,.15),inset 0 6px 14px rgba(255,255,255,.4);text-shadow:0 2px 4px rgba(0,0,0,.2)}
+.sv-bub.c1 .b{background:linear-gradient(145deg,#6bd1ff,#2a6dff)}
+.sv-bub.c2 .b{background:linear-gradient(145deg,#b0ff8b,#1fb86a)}
+.sv-bub.c3 .b{background:linear-gradient(145deg,#c38bff,#5a2eb8)}
+.sv-bub.c4 .b{background:linear-gradient(145deg,#ff6cc1,#b22e74)}
+.sv-bub.c5 .b{background:linear-gradient(145deg,#ffd36b,#e68a00)}
+.sv-bub.c6 .b{background:linear-gradient(145deg,#66ffe4,#1a9388)}
+.sv-bub.c7 .b{background:linear-gradient(145deg,#9b7bff,#4b2ec8)}
+.sv-bub .n{color:#efe6ff;font-size:12px;letter-spacing:1.5px}
+.sv-dots{display:flex;gap:10px;justify-content:center;padding:6px}
+.sv-dots span{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25);cursor:pointer}
+.sv-dots span.on{background:#fff}
+.sv-footer{text-align:center;color:#c9b9ea;font-size:11px;letter-spacing:3px;text-transform:uppercase}
+</style>
+</head>
+<body>
+<canvas class="console-bg" id="bg"></canvas>
+
+<div class="top-hud">
+  <div class="left"><a href="../../" class="back-link">◂ Boot picker</a><span class="pill">Son Vita</span></div>
+  <div class="right"><span class="hud-time" id="clock">--:--</span><span class="pill">WI-FI</span><span class="pill">BAT 88%</span></div>
+</div>
+
+<main class="sv-wrap">
+  <div class="sv-pages" id="pages"></div>
+  <div>
+    <div class="sv-dots" id="dots"></div>
+    <div class="sv-footer">tap a bubble &nbsp;·&nbsp; ← → pages &nbsp;·&nbsp; esc · back</div>
+  </div>
+</main>
+
+<div class="modal" id="rom"><div class="box">
+  <h3>Install Card Dump</h3>
+  <p>Vita-era emulation is <b>not viable in a browser</b>. The shell lets you register your file so the UI can show it.</p>
+  <div class="rom-drop" id="drop">Drag a file here or click to choose</div>
+  <div class="row"><button class="btn" data-x>Cancel</button><button class="btn primary" id="boot" disabled>Install</button></div>
+</div></div>
+
+<script type="module">
+import { audio, clock, toast, pickFile } from '../../js/shared.js';
+clock(document.getElementById('clock'));
+
+const PAGES = [
+  [
+    {n:'Settings', ic:'⚙', c:'c1'},
+    {n:'Browser',  ic:'🌐', c:'c2'},
+    {n:'Email',    ic:'✉', c:'c3'},
+    {n:'Store',    ic:'▦', c:'c4'},
+    {n:'Friends',  ic:'✶', c:'c5'},
+    {n:'Messages', ic:'✉', c:'c6'},
+    {n:'Photos',   ic:'◇', c:'c7'},
+    {n:'Music',    ic:'♪', c:'c1'}
+  ],
+  [
+    {n:'Videos',   ic:'▶', c:'c2'},
+    {n:'Maps',     ic:'◎', c:'c3'},
+    {n:'Calendar', ic:'▦', c:'c4'},
+    {n:'Notes',    ic:'✎', c:'c5'},
+    {n:'Weather',  ic:'☀', c:'c6'},
+    {n:'Calc',     ic:'=', c:'c7'},
+    {n:'Load Card',ic:'⤓', c:'c1', action:'rom'},
+    {n:'About',    ic:'ⓘ', c:'c2'}
+  ]
+];
+let pg = 0;
+const pagesEl = document.getElementById('pages');
+const dotsEl  = document.getElementById('dots');
+function render(){
+  pagesEl.innerHTML = PAGES.map((p,i)=>`
+    <div class="sv-page ${i===pg?'on':i<pg?'prev':'next'}" data-i="${i}">
+      ${p.map((b,j)=>`<div class="sv-bub ${b.c}" data-p="${i}" data-j="${j}"><div class="b">${b.ic}</div><div class="n">${b.n}</div></div>`).join('')}
+    </div>`).join('');
+  dotsEl.innerHTML = PAGES.map((_,i)=>`<span class="${i===pg?'on':''}" data-i="${i}"></span>`).join('');
+  pagesEl.querySelectorAll('.sv-bub').forEach(el=>{
+    el.addEventListener('mouseenter',()=>audio.hover());
+    el.addEventListener('click',()=>{
+      audio.confirm();
+      const b = PAGES[+el.dataset.p][+el.dataset.j];
+      if(b.action==='rom') document.getElementById('rom').classList.add('on');
+      else toast(b.n);
+    });
+  });
+  dotsEl.querySelectorAll('span').forEach(s=>s.addEventListener('click',()=>{ pg=+s.dataset.i; audio.tick(); render(); }));
+}
+addEventListener('keydown', e=>{
+  if(e.key==='ArrowRight'){ pg=(pg+1)%PAGES.length; audio.tick(); render(); }
+  if(e.key==='ArrowLeft'){ pg=(pg-1+PAGES.length)%PAGES.length; audio.tick(); render(); }
+  if(e.key==='Escape'){ audio.back(); history.back(); }
+});
+// touch swipe
+let tx=0;
+addEventListener('pointerdown', e=>tx=e.clientX);
+addEventListener('pointerup',   e=>{ const dx=e.clientX-tx; if(Math.abs(dx)>50){ pg=(pg+(dx<0?1:-1)+PAGES.length)%PAGES.length; audio.tick(); render(); }});
+
+render();
+
+// ROM modal
+const modal = document.getElementById('rom');
+const drop  = document.getElementById('drop');
+const boot  = document.getElementById('boot');
+let picked=null;
+modal.querySelector('[data-x]').addEventListener('click', ()=>{ modal.classList.remove('on'); picked=null; boot.disabled=true; drop.textContent='Drag a file here or click to choose'; });
+drop.addEventListener('click', async ()=>{ const f = await pickFile('.vpk,.iso,.bin,.zip'); if(f) use(f); });
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('hot'); });
+drop.addEventListener('dragleave', ()=>drop.classList.remove('hot'));
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('hot'); if(e.dataTransfer.files[0]) use(e.dataTransfer.files[0]); });
+function use(f){ picked=f; drop.textContent=`${f.name} · ${(f.size/1024/1024).toFixed(1)} MB`; boot.disabled=false; }
+boot.addEventListener('click', ()=>{ audio.confirm(); modal.classList.remove('on'); toast(`Registered ${picked.name} · UI shell only`); });
+
+// Dreamy aurora background
+const bg = document.getElementById('bg'), c = bg.getContext('2d');
+function resize(){ bg.width=innerWidth; bg.height=innerHeight; } addEventListener('resize',resize); resize();
+let t=0;
+function loop(){
+  t+=.006;
+  const g = c.createLinearGradient(0,0,0,bg.height);
+  g.addColorStop(0,'#1a0d3a'); g.addColorStop(1,'#060214'); c.fillStyle=g; c.fillRect(0,0,bg.width,bg.height);
+  for(let i=0;i<4;i++){
+    const gx = bg.width*(.3 + .2*Math.sin(t+i*1.2));
+    const gy = bg.height*(.4 + .2*Math.cos(t*.8+i*1.5));
+    const rr = Math.max(bg.width,bg.height)*.4;
+    const rg = c.createRadialGradient(gx,gy,0,gx,gy,rr);
+    const hue = [290,210,330,180][i];
+    rg.addColorStop(0, `hsla(${hue},80%,65%,.18)`); rg.addColorStop(1,'transparent');
+    c.fillStyle=rg; c.fillRect(0,0,bg.width,bg.height);
+  }
+  for(let i=0;i<80;i++){
+    const px = (i*73 + t*20)%bg.width;
+    const py = ((i*131 - t*10)%bg.height + bg.height)%bg.height;
+    c.fillStyle = `rgba(255,220,255,${.2 + .4*Math.abs(Math.sin(t+i))})`;
+    c.beginPath(); c.arc(px,py,.8,0,Math.PI*2); c.fill();
+  }
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

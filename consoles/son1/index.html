@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Son 1 — Memory Browser</title>
+<link rel="stylesheet" href="../../css/console.css">
+<style>
+body{background:#000}
+.crt{position:fixed;inset:0;z-index:0;background:
+  radial-gradient(1200px 700px at 50% 60%, #15202c 0%, #000 70%);
+}
+.s1-title{position:fixed;left:50%;top:38px;transform:translateX(-50%);z-index:3;color:#c7e6ff;letter-spacing:12px;font-weight:300;font-size:14px}
+.s1-wrap{position:fixed;inset:0;z-index:2;display:grid;grid-template-rows:auto 1fr auto;padding:70px 6vw 40px}
+.s1-tabs{display:flex;gap:40px;justify-content:center;color:#7d93a8;letter-spacing:6px;font-size:13px;padding-top:28px}
+.s1-tabs .t{padding:8px 24px;border-bottom:2px solid transparent;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.s1-tabs .t.sel{color:#fff;border-color:#8fd8ff;text-shadow:0 0 12px #5fd4ff}
+.s1-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;align-content:start;align-items:start;padding:28px 0;overflow-y:auto}
+.s1-card{aspect-ratio:1;border:1px solid rgba(143,216,255,.25);background:linear-gradient(145deg,#0f1d2b,#071118);padding:16px;display:flex;flex-direction:column;justify-content:space-between;color:#bfdcf1;cursor:pointer;transition:all .18s;position:relative;overflow:hidden}
+.s1-card:hover,.s1-card.sel{border-color:#8fd8ff;background:linear-gradient(145deg,#15304a,#0a1826);box-shadow:0 0 30px rgba(95,212,255,.25) inset}
+.s1-card .ic{width:36px;height:36px;border:1px solid rgba(255,255,255,.3);display:grid;place-items:center;color:#8fd8ff;font-size:14px;letter-spacing:1px}
+.s1-card .nm{font-size:13px;letter-spacing:2px;text-transform:uppercase}
+.s1-card .sz{font-size:10px;color:#6e8aa0;letter-spacing:1px}
+.s1-footer{color:#6e8aa0;font-size:11px;letter-spacing:2px;text-align:center;text-transform:uppercase}
+.scanlines{position:fixed;inset:0;z-index:4;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(0,0,0,0) 0px,rgba(0,0,0,0) 2px,rgba(0,0,0,.18) 3px);mix-blend-mode:multiply}
+.vignette{position:fixed;inset:0;z-index:5;pointer-events:none;box-shadow:inset 0 0 180px #000}
+</style>
+</head>
+<body>
+<canvas class="console-bg" id="bg"></canvas>
+<div class="crt"></div>
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div class="top-hud">
+  <div class="left"><a href="../../" class="back-link">◂ Boot picker</a><span class="pill">Son 1</span></div>
+  <div class="right"><span class="hud-time" id="clock">--:--</span></div>
+</div>
+
+<div class="s1-title">S &nbsp; O &nbsp; N &nbsp; &nbsp; 1</div>
+
+<main class="s1-wrap">
+  <nav class="s1-tabs" id="tabs">
+    <div class="t sel" data-k="disc">Disc</div>
+    <div class="t"      data-k="memcard">Memory Card</div>
+    <div class="t"      data-k="cd">CD Player</div>
+    <div class="t"      data-k="config">Config</div>
+  </nav>
+  <section class="s1-cards" id="grid"></section>
+  <footer class="s1-footer" id="hint">◂ ▸ select tab &nbsp;·&nbsp; ↑ ↓ ← → cards &nbsp;·&nbsp; enter · load &nbsp;·&nbsp; esc · back</footer>
+</main>
+
+<div class="modal" id="rom">
+  <div class="box">
+    <h3>Load Disc</h3>
+    <p>Son 1-era discs run in a WebAssembly core. Drop a <b>.bin/.cue</b> or <b>.iso</b>, or pick a file.</p>
+    <div class="rom-drop" id="drop">Drag a file here or click to choose</div>
+    <div style="font-size:12px;color:var(--dim);margin-top:8px">Nothing is uploaded; the file stays in your browser's memory.</div>
+    <div class="row">
+      <button class="btn" data-x>Cancel</button>
+      <button class="btn primary" id="boot" disabled>Boot</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { audio, clock, toast, pickFile } from '../../js/shared.js';
+clock(document.getElementById('clock'));
+
+const items = {
+  disc:    [{nm:'LOAD DISC',sz:'INSERT'},{nm:'DISC INFO',sz:'—'}],
+  memcard: Array.from({length:15},(_,i)=>({nm:`SLOT ${String(i+1).padStart(2,'0')}`, sz: i<3?`BLOCK ${i+1}`:'EMPTY'})),
+  cd:      [{nm:'PLAY',sz:''},{nm:'STOP',sz:''},{nm:'SHUFFLE',sz:''},{nm:'REPEAT',sz:''}],
+  config:  [{nm:'SOUND',sz:'STEREO'},{nm:'SCREEN',sz:'4:3'},{nm:'LANGUAGE',sz:'ENG'},{nm:'ABOUT',sz:'v0.1'}]
+};
+let tab='disc', idx=0;
+const grid = document.getElementById('grid');
+function render(){
+  grid.innerHTML = items[tab].map((it,i)=>`
+    <div class="s1-card ${i===idx?'sel':''}" data-i="${i}">
+      <div class="ic">■</div>
+      <div><div class="nm">${it.nm}</div><div class="sz">${it.sz}</div></div>
+    </div>`).join('');
+  grid.querySelectorAll('.s1-card').forEach(el=>{
+    el.addEventListener('mouseenter', ()=>{ idx=+el.dataset.i; paintSel(); audio.hover(); });
+    el.addEventListener('click', ()=>act());
+  });
+}
+function paintSel(){ grid.querySelectorAll('.s1-card').forEach((el,i)=>el.classList.toggle('sel', i===idx)); }
+const tabs = document.querySelectorAll('.t');
+tabs.forEach(t=>t.addEventListener('click', ()=>{ tab=t.dataset.k; idx=0; tabs.forEach(x=>x.classList.toggle('sel',x===t)); render(); audio.tick(); }));
+addEventListener('keydown', e=>{
+  const n = items[tab].length;
+  if(e.key==='ArrowRight'){ idx=(idx+1)%n; audio.tick(); paintSel(); }
+  if(e.key==='ArrowLeft'){ idx=(idx-1+n)%n; audio.tick(); paintSel(); }
+  if(e.key==='ArrowDown'){ idx=Math.min(n-1,idx+3); audio.tick(); paintSel(); }
+  if(e.key==='ArrowUp'){ idx=Math.max(0,idx-3); audio.tick(); paintSel(); }
+  if(e.key==='Enter'){ act(); }
+  if(e.key==='Escape'){ history.back(); }
+});
+function act(){
+  audio.confirm();
+  if(tab==='disc' && idx===0){ openRom(); return; }
+  if(tab==='config' && items.config[idx].nm==='ABOUT'){ toast('Son 1 · CRT shell · 2026'); return; }
+  toast(items[tab][idx].nm + ' · selected');
+}
+render();
+
+// ROM modal
+const modal = document.getElementById('rom');
+const drop  = document.getElementById('drop');
+const bootBtn = document.getElementById('boot');
+let picked = null;
+function openRom(){ modal.classList.add('on'); }
+modal.querySelector('[data-x]').addEventListener('click', ()=>{ modal.classList.remove('on'); picked=null; bootBtn.disabled=true; drop.textContent='Drag a file here or click to choose'; });
+drop.addEventListener('click', async ()=>{ const f = await pickFile('.iso,.bin,.cue,.img,.zip'); if(f) use(f); });
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('hot'); });
+drop.addEventListener('dragleave', ()=>drop.classList.remove('hot'));
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('hot'); if(e.dataTransfer.files[0]) use(e.dataTransfer.files[0]); });
+function use(f){ picked=f; drop.textContent = `${f.name} · ${(f.size/1024/1024).toFixed(1)} MB`; bootBtn.disabled=false; }
+bootBtn.addEventListener('click', ()=>{
+  audio.confirm();
+  modal.classList.remove('on');
+  toast(`Loading ${picked.name} · WASM core (demo shell)`);
+  // Real emulator wiring would decode the file and hand buffers to a WASM core here.
+  // This shell confirms the pipeline without shipping a copyrighted BIOS.
+});
+
+// CRT backdrop + ambient scan
+const bg = document.getElementById('bg');
+const ctx = bg.getContext('2d');
+function resize(){ bg.width=innerWidth; bg.height=innerHeight; }
+addEventListener('resize', resize); resize();
+let t=0;
+function loop(){
+  t++;
+  ctx.clearRect(0,0,bg.width,bg.height);
+  // horizontal roll bar
+  const y = (t*2)%bg.height;
+  const g = ctx.createLinearGradient(0,y-80,0,y+80);
+  g.addColorStop(0,'transparent'); g.addColorStop(.5,'rgba(255,255,255,.035)'); g.addColorStop(1,'transparent');
+  ctx.fillStyle=g; ctx.fillRect(0,y-80,bg.width,160);
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
